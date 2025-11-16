@@ -12,6 +12,7 @@ import { OptionsPositionsTable } from "@/components/OptionsPositionsTable";
 import { OptionsOrderTicket } from "@/components/OptionsOrderTicket";
 import { NewsAlertsPanel } from "@/components/NewsAlertsPanel";
 import { TraderNotesWidget } from "@/components/TraderNotesWidget";
+import { TradeHistoryTable } from "@/components/TradeHistoryTable";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -205,10 +206,8 @@ const Index = () => {
 
         {/* Bottom - Trade History */}
         <div>
-          <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Trade History</h3>
-          <Card className="p-8 text-center text-sm text-muted-foreground">
-            No recent trades
-          </Card>
+          <h3 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">Trade History</h3>
+          <TradeHistoryTable />
         </div>
       </div>
     </div>
