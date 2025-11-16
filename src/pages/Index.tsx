@@ -7,7 +7,9 @@ import { BotStatusPanel } from "@/components/BotStatusPanel";
 import { MasterControlPanel } from "@/components/MasterControlPanel";
 import { KPIGrid } from "@/components/KPIGrid";
 import { TradingViewChart } from "@/components/TradingViewChart";
+import { OptionsChain } from "@/components/OptionsChain";
 import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 const Index = () => {
@@ -123,34 +125,35 @@ const Index = () => {
       <div className="p-4 space-y-4">
         {/* Top Row - Market Overview */}
         <div>
-          <h2 className="text-lg font-semibold mb-3 text-foreground">Market Overview</h2>
+          <h2 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Market Overview</h2>
           <MarketOverview />
-        </div>
-
-        {/* KPIs Grid */}
-        <div>
-          <h2 className="text-lg font-semibold mb-3 text-foreground">Market Analysis</h2>
-          <KPIGrid data={snapshotData} loading={!snapshotData} />
         </div>
 
         {/* Middle Row - Chart & Controls */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Chart & Options Section - 2/3 width */}
-          <div className="lg:col-span-2 space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold mb-3 text-foreground">Intraday Chart</h2>
-              <TradingViewChart symbol={currentSymbol} />
-            </div>
-
-            <div>
-              <h2 className="text-lg font-semibold mb-3 text-foreground">Options Chain</h2>
-              <Card className="p-8 h-96 flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-muted-foreground mb-2">Options Chain coming soon</p>
-                  <p className="text-xs text-muted-foreground">Will display full options chain with Greeks</p>
-                </div>
-              </Card>
-            </div>
+          <div className="lg:col-span-2">
+            <Tabs defaultValue="chart" className="w-full">
+              <TabsList className="w-full justify-start mb-4">
+                <TabsTrigger value="chart" className="flex-1 max-w-[120px]">Chart</TabsTrigger>
+                <TabsTrigger value="kpis" className="flex-1 max-w-[120px]">KPIs</TabsTrigger>
+                <TabsTrigger value="options" className="flex-1 max-w-[150px]">Options Chain</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="chart" className="mt-0">
+                <TradingViewChart symbol={currentSymbol} />
+              </TabsContent>
+              
+              <TabsContent value="kpis" className="mt-0">
+                <Card className="p-6">
+                  <KPIGrid data={snapshotData} loading={!snapshotData} />
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="options" className="mt-0">
+                <OptionsChain symbol={currentSymbol} />
+              </TabsContent>
+            </Tabs>
           </div>
 
           {/* Command & Status Column - 1/3 width */}
