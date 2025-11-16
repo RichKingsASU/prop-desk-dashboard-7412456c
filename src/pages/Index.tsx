@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { MarketOverview } from "@/components/MarketOverview";
 import { MarketTicker } from "@/components/MarketTicker";
@@ -14,10 +15,13 @@ import { NewsAlertsPanel } from "@/components/NewsAlertsPanel";
 import { TraderNotesWidget } from "@/components/TraderNotesWidget";
 import { TradeHistoryTable } from "@/components/TradeHistoryTable";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Target } from "lucide-react";
 import { toast } from "sonner";
 
 const Index = () => {
+  const navigate = useNavigate();
   const [currentSymbol, setCurrentSymbol] = useState("SPY");
   const [accountData, setAccountData] = useState<any>(null);
   const [botStatus, setBotStatus] = useState<any>(null);
@@ -113,6 +117,10 @@ const Index = () => {
     // TODO: POST to /api/bot/panic
   };
 
+  const handleOpenConsole = () => {
+    navigate(`/console/${currentSymbol}`);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <DashboardHeader
@@ -128,9 +136,15 @@ const Index = () => {
       <MarketTicker />
 
       <div className="p-4 space-y-4">
-        {/* Top Row - Market Overview */}
+        {/* Top Row - Market Overview + Console Button */}
         <div>
-          <h2 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Market Overview</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Market Overview</h2>
+            <Button onClick={handleOpenConsole} size="sm" variant="outline">
+              <Target className="h-4 w-4 mr-2" />
+              Open Decision Console
+            </Button>
+          </div>
           <MarketOverview />
         </div>
 
