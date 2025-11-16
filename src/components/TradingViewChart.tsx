@@ -105,8 +105,7 @@ export function TradingViewChart({ symbol, data }: TradingViewChartProps) {
     const low = Math.min(open, close) - Math.random() * 0.5;
     
     return {
-      time: timestamp.toISOString().split('T')[0] + ' ' + 
-            timestamp.toTimeString().split(' ')[0].substring(0, 5),
+      time: timestamp.toISOString().split('T')[0], // Just date for lightweight-charts
       open,
       high,
       low,
