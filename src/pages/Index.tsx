@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { DashboardHeader } from "@/components/DashboardHeader";
+import { MarketOverview } from "@/components/MarketOverview";
+import { MarketTicker } from "@/components/MarketTicker";
 import { AccountPanel } from "@/components/AccountPanel";
 import { BotStatusPanel } from "@/components/BotStatusPanel";
 import { MasterControlPanel } from "@/components/MasterControlPanel";
@@ -114,8 +116,17 @@ const Index = () => {
         dayPnlPct={accountData?.day_pnl_pct || 0}
       />
 
+      {/* Market Ticker Strip */}
+      <MarketTicker />
+
       <div className="p-4 space-y-4">
-        {/* Top Row - KPIs Grid */}
+        {/* Top Row - Market Overview */}
+        <div>
+          <h2 className="text-lg font-semibold mb-3 text-foreground">Market Overview</h2>
+          <MarketOverview />
+        </div>
+
+        {/* KPIs Grid */}
         <div>
           <h2 className="text-lg font-semibold mb-3 text-foreground">Market Analysis</h2>
           <KPIGrid data={snapshotData} loading={!snapshotData} />
