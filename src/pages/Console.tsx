@@ -1,0 +1,198 @@
+import { useState, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { StructureMap } from "@/components/console/StructureMap";
+import { ExecutionChart } from "@/components/console/ExecutionChart";
+import { DecisionStrip } from "@/components/console/DecisionStrip";
+import { FlowMomentum } from "@/components/console/FlowMomentum";
+import { ConsolePositionCard } from "@/components/console/ConsolePositionCard";
+import { MicroNotes } from "@/components/console/MicroNotes";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const Console = () => {
+  const { symbol } = useParams<{ symbol: string }>();
+  const [snapshotData, setSnapshotData] = useState<any>(null);
+  const [levelsData, setLevelsData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Mock data fetching - replace with actual API calls
+    const fetchData = async () => {
+      setLoading(true);
+      
+      // Mock snapshot data
+      setSnapshotData({
+        symbol: symbol,
+        last_price: 432.15,
+        last_price_change: 1.23,
+        last_price_change_pct: 0.29,
+        company_name: symbol === "SPY" ? "SPDR S&P 500 ETF" : `${symbol} Inc.`,
+        timestamp: new Date().toISOString(),
+        trend_bias: "Bullish",
+        vwap: 430.80,
+        vwap_position_pct: 0.31,
+        trend_strength_score: 82,
+        rvol: 2.8,
+        rsi_14: 64,
+        rsi_zone: "Bullish",
+        macd_state: "Bullish",
+        volatility_regime: "High",
+        bb_state: "Expanded",
+        atr_14: 1.25,
+        atr_pct: 0.85,
+        day_bias: "Bullish",
+      });
+
+      // Mock levels data
+      setLevelsData({
+        prev_day_high: 433.50,
+        prev_day_low: 428.20,
+        prev_day_close: 430.92,
+        premarket_high: 432.80,
+        premarket_low: 430.10,
+        orh_5m: 432.50,
+        orl_5m: 430.50,
+        intraday_high: 433.15,
+        intraday_low: 429.85,
+        daily_high: 440.20,
+        daily_low: 425.10,
+        hour_4_high: 434.00,
+        hour_4_low: 429.50,
+        hour_1_high: 433.00,
+        hour_1_low: 431.20,
+      });
+
+      setLoading(false);
+    };
+
+    fetchData();
+
+    // Refresh every 15 seconds
+    const interval = setInterval(fetchData, 15000);
+    return () => clearInterval(interval);
+  }, [symbol]);
+
+  const currentTime = new Date();
+  const hour = currentTime.getHours();
+  const session = hour < 9 || (hour === 9 && currentTime.getMinutes() < 30) 
+    ? "Pre-Market" 
+    : hour >= 16 
+    ? "After-Hours" 
+    : "Regular";
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Top Symbol Bar */}
+      <div className="border-b border-border bg-card">
+        <div className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link to="/">
+                <Button variant="ghost" size="sm">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+              </Link>
+              
+              <div className="border-l border-border pl-4">
+                <div className="flex items-baseline gap-3">
+                  <h1 className="text-2xl font-bold">{symbol}</h1>
+                  {!loading && snapshotData && (
+                    <>
+                      <span className="text-sm text-muted-foreground">
+                        {snapshotData.company_name}
+                      </span>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xl font-semibold number-mono">
+                          ${snapshotData.last_price.toFixed(2)}
+                        </span>
+                        <span className={snapshotData.last_price_change >= 0 ? "text-bull" : "text-bear"}>
+                          {snapshotData.last_price_change >= 0 ? "+" : ""}
+                          {snapshotData.last_price_change.toFixed(2)} (
+                          {snapshotData.last_price_change_pct >= 0 ? "+" : ""}
+                          {snapshotData.last_price_change_pct.toFixed(2)}%)
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  {!loading && snapshotData && (
+                    <>
+                      <Badge variant={snapshotData.day_bias === "Bullish" ? "default" : "secondary"}>
+                        {snapshotData.day_bias}
+                      </Badge>
+                      <Badge variant="outline">{session}</Badge>
+                    </>
+                  )}
+                  {loading && (
+                    <>
+                      <Skeleton className="h-5 w-16" />
+                      <Skeleton className="h-5 w-20" />
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3-Column Layout */}
+      <div className="p-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Left Column - Structure Map */}
+          <div className="lg:col-span-3 space-y-4">
+            <StructureMap 
+              snapshotData={snapshotData} 
+              levelsData={levelsData} 
+              loading={loading} 
+            />
+          </div>
+
+          {/* Center Column - Execution Chart + Decision Strip */}
+          <div className="lg:col-span-6 space-y-4">
+            <ExecutionChart 
+              symbol={symbol || "SPY"} 
+              levelsData={levelsData} 
+              currentPrice={snapshotData?.last_price}
+              vwap={snapshotData?.vwap}
+              atr={snapshotData?.atr_14}
+              loading={loading}
+            />
+            
+            <DecisionStrip 
+              snapshotData={snapshotData}
+              levelsData={levelsData}
+              loading={loading}
+            />
+          </div>
+
+          {/* Right Column - Flow & Position */}
+          <div className="lg:col-span-3 space-y-4">
+            <FlowMomentum 
+              snapshotData={snapshotData} 
+              loading={loading} 
+            />
+            
+            <ConsolePositionCard 
+              symbol={symbol || "SPY"}
+              currentPrice={snapshotData?.last_price}
+              levelsData={levelsData}
+              loading={loading}
+            />
+            
+            <MicroNotes 
+              defaultSymbol={symbol || "SPY"} 
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Console;
