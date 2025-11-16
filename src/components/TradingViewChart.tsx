@@ -13,12 +13,24 @@ interface CandleData {
   volume: number;
 }
 
+interface KeyLevels {
+  prev_day_high: number;
+  prev_day_low: number;
+  prev_day_close: number;
+  premarket_high: number;
+  premarket_low: number;
+  open_price: number;
+  orh_5m: number;
+  orl_5m: number;
+}
+
 interface TradingViewChartProps {
   symbol: string;
   data?: CandleData[];
+  levels?: KeyLevels;
 }
 
-export function TradingViewChart({ symbol, data }: TradingViewChartProps) {
+export function TradingViewChart({ symbol, data, levels }: TradingViewChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const candlestickSeriesRef = useRef<any>(null);
@@ -33,6 +45,20 @@ export function TradingViewChart({ symbol, data }: TradingViewChartProps) {
     sma200: false,
     bb: false,
   });
+
+  const [showLevels, setShowLevels] = useState(true);
+
+  // Mock key levels if not provided
+  const mockLevels: KeyLevels = levels || {
+    prev_day_high: 434.50,
+    prev_day_low: 428.20,
+    prev_day_close: 431.80,
+    premarket_high: 432.90,
+    premarket_low: 430.50,
+    open_price: 431.20,
+    orh_5m: 432.10,
+    orl_5m: 430.80,
+  };
 
   // Technical indicator calculations
   const calculateEMA = (data: number[], period: number): number[] => {
@@ -191,6 +217,66 @@ export function TradingViewChart({ symbol, data }: TradingViewChartProps) {
     candlestickSeries.setData(chartData);
     volumeSeries.setData(volumeData);
 
+    // Add key levels as price lines
+    if (showLevels && mockLevels) {
+      // Prev Day High/Low (red dotted)
+      candlestickSeries.createPriceLine({
+        price: mockLevels.prev_day_high,
+        color: '#dc2626',
+        lineWidth: 1,
+        lineStyle: 3, // dotted
+        axisLabelVisible: true,
+        title: 'Prev High',
+      });
+      
+      candlestickSeries.createPriceLine({
+        price: mockLevels.prev_day_low,
+        color: '#dc2626',
+        lineWidth: 1,
+        lineStyle: 3, // dotted
+        axisLabelVisible: true,
+        title: 'Prev Low',
+      });
+
+      // Premarket High/Low (blue dashed)
+      candlestickSeries.createPriceLine({
+        price: mockLevels.premarket_high,
+        color: '#2563eb',
+        lineWidth: 1,
+        lineStyle: 2, // dashed
+        axisLabelVisible: true,
+        title: 'PM High',
+      });
+      
+      candlestickSeries.createPriceLine({
+        price: mockLevels.premarket_low,
+        color: '#2563eb',
+        lineWidth: 1,
+        lineStyle: 2, // dashed
+        axisLabelVisible: true,
+        title: 'PM Low',
+      });
+
+      // ORH/ORL 5m (gray solid)
+      candlestickSeries.createPriceLine({
+        price: mockLevels.orh_5m,
+        color: '#6b7280',
+        lineWidth: 2,
+        lineStyle: 0, // solid
+        axisLabelVisible: true,
+        title: 'ORH 5m',
+      });
+      
+      candlestickSeries.createPriceLine({
+        price: mockLevels.orl_5m,
+        color: '#6b7280',
+        lineWidth: 2,
+        lineStyle: 0, // solid
+        axisLabelVisible: true,
+        title: 'ORL 5m',
+      });
+    }
+
     // Add technical indicators
     const closePrices = mockData.map(d => d.close);
     const times = mockData.map(d => d.time as any);
@@ -319,7 +405,7 @@ export function TradingViewChart({ symbol, data }: TradingViewChartProps) {
       window.removeEventListener('resize', handleResize);
       chart.remove();
     };
-  }, [symbol, indicators]);
+  }, [symbol, indicators, showLevels]);
 
   return (
     <Card className="p-4">
@@ -343,7 +429,21 @@ export function TradingViewChart({ symbol, data }: TradingViewChartProps) {
         </div>
         
         {/* Technical Indicators Controls */}
-        <div className="flex flex-wrap gap-4 pt-2 border-t border-border">
+        <div className="flex flex-wrap gap-4 pt-3 border-t border-border">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="levels"
+              checked={showLevels}
+              onCheckedChange={(checked) => 
+                setShowLevels(checked as boolean)
+              }
+            />
+            <Label htmlFor="levels" className="text-xs font-medium cursor-pointer text-primary">
+              Key Levels
+            </Label>
+          </div>
+          
+          <div className="h-4 w-px bg-border" />
           <div className="flex items-center space-x-2">
             <Checkbox
               id="vwap"
