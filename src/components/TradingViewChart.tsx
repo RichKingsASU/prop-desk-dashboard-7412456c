@@ -120,8 +120,8 @@ export function TradingViewChart({ symbol, data, levels }: TradingViewChartProps
   // Generate mock intraday data if no data provided
   const mockData: CandleData[] = data || Array.from({ length: 100 }, (_, i) => {
     const timestamp = new Date();
-    timestamp.setHours(9, 30, 0, 0); // Market open
-    timestamp.setMinutes(timestamp.getMinutes() + i);
+    timestamp.setHours(9, 30, 0, 0); // Market open at 9:30 AM
+    timestamp.setMinutes(timestamp.getMinutes() + i); // Add i minutes for each candle
     
     const basePrice = 432;
     const variation = Math.sin(i / 10) * 3;
@@ -131,7 +131,7 @@ export function TradingViewChart({ symbol, data, levels }: TradingViewChartProps
     const low = Math.min(open, close) - Math.random() * 0.5;
     
     return {
-      time: timestamp.toISOString().split('T')[0], // Just date for lightweight-charts
+      time: Math.floor(timestamp.getTime() / 1000) as any, // Unix timestamp in seconds
       open,
       high,
       low,
