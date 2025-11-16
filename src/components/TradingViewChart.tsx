@@ -1,6 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createChart, ColorType } from "lightweight-charts";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 interface CandleData {
   time: string;
@@ -21,6 +23,73 @@ export function TradingViewChart({ symbol, data }: TradingViewChartProps) {
   const chartRef = useRef<any>(null);
   const candlestickSeriesRef = useRef<any>(null);
   const volumeSeriesRef = useRef<any>(null);
+  const indicatorSeriesRef = useRef<Map<string, any>>(new Map());
+
+  const [indicators, setIndicators] = useState({
+    vwap: false,
+    ema9: false,
+    ema21: false,
+    ema50: false,
+    sma200: false,
+    bb: false,
+  });
+
+  // Technical indicator calculations
+  const calculateEMA = (data: number[], period: number): number[] => {
+    const k = 2 / (period + 1);
+    const emaData: number[] = [];
+    emaData[0] = data[0];
+    
+    for (let i = 1; i < data.length; i++) {
+      emaData[i] = data[i] * k + emaData[i - 1] * (1 - k);
+    }
+    return emaData;
+  };
+
+  const calculateSMA = (data: number[], period: number): number[] => {
+    const smaData: number[] = [];
+    for (let i = 0; i < data.length; i++) {
+      if (i < period - 1) {
+        smaData[i] = NaN;
+      } else {
+        const sum = data.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0);
+        smaData[i] = sum / period;
+      }
+    }
+    return smaData;
+  };
+
+  const calculateVWAP = (candles: CandleData[]): number[] => {
+    let cumulativeTPV = 0;
+    let cumulativeVolume = 0;
+    return candles.map(candle => {
+      const typicalPrice = (candle.high + candle.low + candle.close) / 3;
+      cumulativeTPV += typicalPrice * candle.volume;
+      cumulativeVolume += candle.volume;
+      return cumulativeTPV / cumulativeVolume;
+    });
+  };
+
+  const calculateBollingerBands = (data: number[], period: number, stdDev: number) => {
+    const sma = calculateSMA(data, period);
+    const upper: number[] = [];
+    const lower: number[] = [];
+    
+    for (let i = 0; i < data.length; i++) {
+      if (i < period - 1) {
+        upper[i] = NaN;
+        lower[i] = NaN;
+      } else {
+        const slice = data.slice(i - period + 1, i + 1);
+        const std = Math.sqrt(
+          slice.reduce((sum, val) => sum + Math.pow(val - sma[i], 2), 0) / period
+        );
+        upper[i] = sma[i] + stdDev * std;
+        lower[i] = sma[i] - stdDev * std;
+      }
+    }
+    return { middle: sma, upper, lower };
+  };
 
   // Generate mock intraday data if no data provided
   const mockData: CandleData[] = data || Array.from({ length: 100 }, (_, i) => {
@@ -123,6 +192,116 @@ export function TradingViewChart({ symbol, data }: TradingViewChartProps) {
     candlestickSeries.setData(chartData);
     volumeSeries.setData(volumeData);
 
+    // Add technical indicators
+    const closePrices = mockData.map(d => d.close);
+    const times = mockData.map(d => d.time as any);
+
+    // Clear existing indicator series
+    indicatorSeriesRef.current.forEach(series => chart.removeSeries(series));
+    indicatorSeriesRef.current.clear();
+
+    if (indicators.vwap) {
+      const vwapValues = calculateVWAP(mockData);
+      const vwapSeries = chart.addLineSeries({
+        color: '#2962FF',
+        lineWidth: 2,
+        title: 'VWAP',
+      });
+      vwapSeries.setData(vwapValues.map((value, i) => ({ time: times[i], value })));
+      indicatorSeriesRef.current.set('vwap', vwapSeries);
+    }
+
+    if (indicators.ema9) {
+      const ema9Values = calculateEMA(closePrices, 9);
+      const ema9Series = chart.addLineSeries({
+        color: '#F23645',
+        lineWidth: 1,
+        title: 'EMA 9',
+      });
+      ema9Series.setData(ema9Values.map((value, i) => ({ time: times[i], value })));
+      indicatorSeriesRef.current.set('ema9', ema9Series);
+    }
+
+    if (indicators.ema21) {
+      const ema21Values = calculateEMA(closePrices, 21);
+      const ema21Series = chart.addLineSeries({
+        color: '#FFA726',
+        lineWidth: 1,
+        title: 'EMA 21',
+      });
+      ema21Series.setData(ema21Values.map((value, i) => ({ time: times[i], value })));
+      indicatorSeriesRef.current.set('ema21', ema21Series);
+    }
+
+    if (indicators.ema50) {
+      const ema50Values = calculateEMA(closePrices, 50);
+      const ema50Series = chart.addLineSeries({
+        color: '#26A69A',
+        lineWidth: 1,
+        title: 'EMA 50',
+      });
+      ema50Series.setData(ema50Values.map((value, i) => ({ time: times[i], value })));
+      indicatorSeriesRef.current.set('ema50', ema50Series);
+    }
+
+    if (indicators.sma200) {
+      const sma200Values = calculateSMA(closePrices, 200);
+      const sma200Series = chart.addLineSeries({
+        color: '#AB47BC',
+        lineWidth: 2,
+        title: 'SMA 200',
+      });
+      sma200Series.setData(
+        sma200Values
+          .map((value, i) => ({ time: times[i], value }))
+          .filter(d => !isNaN(d.value))
+      );
+      indicatorSeriesRef.current.set('sma200', sma200Series);
+    }
+
+    if (indicators.bb) {
+      const bb = calculateBollingerBands(closePrices, 20, 2);
+      
+      const bbUpperSeries = chart.addLineSeries({
+        color: '#787B86',
+        lineWidth: 1,
+        lineStyle: 2,
+        title: 'BB Upper',
+      });
+      bbUpperSeries.setData(
+        bb.upper
+          .map((value, i) => ({ time: times[i], value }))
+          .filter(d => !isNaN(d.value))
+      );
+      
+      const bbMiddleSeries = chart.addLineSeries({
+        color: '#787B86',
+        lineWidth: 1,
+        title: 'BB Middle',
+      });
+      bbMiddleSeries.setData(
+        bb.middle
+          .map((value, i) => ({ time: times[i], value }))
+          .filter(d => !isNaN(d.value))
+      );
+      
+      const bbLowerSeries = chart.addLineSeries({
+        color: '#787B86',
+        lineWidth: 1,
+        lineStyle: 2,
+        title: 'BB Lower',
+      });
+      bbLowerSeries.setData(
+        bb.lower
+          .map((value, i) => ({ time: times[i], value }))
+          .filter(d => !isNaN(d.value))
+      );
+      
+      indicatorSeriesRef.current.set('bb-upper', bbUpperSeries);
+      indicatorSeriesRef.current.set('bb-middle', bbMiddleSeries);
+      indicatorSeriesRef.current.set('bb-lower', bbLowerSeries);
+    }
+
     // Fit content
     chart.timeScale().fitContent();
 
@@ -141,11 +320,11 @@ export function TradingViewChart({ symbol, data }: TradingViewChartProps) {
       window.removeEventListener('resize', handleResize);
       chart.remove();
     };
-  }, [symbol]);
+  }, [symbol, indicators]);
 
   return (
     <Card className="p-4">
-      <div className="mb-4">
+      <div className="mb-4 space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-foreground">{symbol}</h3>
@@ -161,6 +340,87 @@ export function TradingViewChart({ symbol, data }: TradingViewChartProps) {
             <button className="px-3 py-1 text-xs font-medium border border-border rounded hover:bg-accent/50 transition-colors">
               15m
             </button>
+          </div>
+        </div>
+        
+        {/* Technical Indicators Controls */}
+        <div className="flex flex-wrap gap-4 pt-2 border-t border-border">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="vwap"
+              checked={indicators.vwap}
+              onCheckedChange={(checked) => 
+                setIndicators(prev => ({ ...prev, vwap: checked as boolean }))
+              }
+            />
+            <Label htmlFor="vwap" className="text-xs font-medium cursor-pointer">
+              VWAP
+            </Label>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="ema9"
+              checked={indicators.ema9}
+              onCheckedChange={(checked) => 
+                setIndicators(prev => ({ ...prev, ema9: checked as boolean }))
+              }
+            />
+            <Label htmlFor="ema9" className="text-xs font-medium cursor-pointer">
+              EMA 9
+            </Label>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="ema21"
+              checked={indicators.ema21}
+              onCheckedChange={(checked) => 
+                setIndicators(prev => ({ ...prev, ema21: checked as boolean }))
+              }
+            />
+            <Label htmlFor="ema21" className="text-xs font-medium cursor-pointer">
+              EMA 21
+            </Label>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="ema50"
+              checked={indicators.ema50}
+              onCheckedChange={(checked) => 
+                setIndicators(prev => ({ ...prev, ema50: checked as boolean }))
+              }
+            />
+            <Label htmlFor="ema50" className="text-xs font-medium cursor-pointer">
+              EMA 50
+            </Label>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="sma200"
+              checked={indicators.sma200}
+              onCheckedChange={(checked) => 
+                setIndicators(prev => ({ ...prev, sma200: checked as boolean }))
+              }
+            />
+            <Label htmlFor="sma200" className="text-xs font-medium cursor-pointer">
+              SMA 200
+            </Label>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="bb"
+              checked={indicators.bb}
+              onCheckedChange={(checked) => 
+                setIndicators(prev => ({ ...prev, bb: checked as boolean }))
+              }
+            />
+            <Label htmlFor="bb" className="text-xs font-medium cursor-pointer">
+              Bollinger Bands
+            </Label>
           </div>
         </div>
       </div>
