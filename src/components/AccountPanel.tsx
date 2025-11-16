@@ -1,5 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { DollarSign, TrendingUp, Wallet } from "lucide-react";
 
 interface AccountData {
   account_id: string;
@@ -26,99 +28,160 @@ interface AccountPanelProps {
 export const AccountPanel = ({ data, loading }: AccountPanelProps) => {
   if (loading || !data) {
     return (
-      <Card className="p-4 space-y-4">
+      <Card className="p-5 space-y-4">
         <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-muted rounded w-3/4"></div>
-          <div className="h-8 bg-muted rounded"></div>
-          <div className="h-4 bg-muted rounded w-1/2"></div>
+          {[...Array(6)].map((_, i) => (
+            <div key={i}>
+              <div className="h-3 bg-muted rounded w-1/3 mb-2"></div>
+              <div className="h-6 bg-muted rounded"></div>
+            </div>
+          ))}
         </div>
       </Card>
     );
   }
 
+  const getGreekColor = (value: number, type: 'delta' | 'theta' | 'vega') => {
+    if (type === 'delta') {
+      if (Math.abs(value) > 50) return value > 0 ? "bull-text" : "bear-text";
+      return "text-muted-foreground";
+    }
+    if (type === 'theta') {
+      if (Math.abs(value) > 25) return "text-warning";
+      return "text-muted-foreground";
+    }
+    if (type === 'vega') {
+      if (Math.abs(value) > 40) return "text-info";
+      return "text-muted-foreground";
+    }
+    return "text-muted-foreground";
+  };
+
   return (
-    <Card className="p-4 space-y-4">
-      <div>
-        <h3 className="text-sm font-medium text-muted-foreground mb-2">Account Info</h3>
-        <div className="flex items-center gap-2">
-          <span className="number-mono text-sm">{data.account_id}</span>
-          <Badge
-            variant="outline"
-            className={data.environment === "production" ? "bg-production/10 text-production border-production" : "bg-sandbox/10 text-sandbox border-sandbox"}
-          >
-            {data.environment}
-          </Badge>
-        </div>
-        <p className="text-xs text-muted-foreground mt-1">{data.market}</p>
-      </div>
-
-      <div className="border-t border-border pt-4">
-        <h3 className="text-sm font-medium text-muted-foreground mb-3">Equity & P/L</h3>
-        <div className="space-y-2">
-          <div className="flex justify-between items-baseline">
-            <span className="text-xs text-muted-foreground">Equity</span>
-            <span className="number-mono text-lg font-semibold">
-              ${data.equity.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
+    <Card className="p-5">
+      <div className="space-y-5">
+        {/* Account Info */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Account Info</h3>
+            <Badge
+              variant="outline"
+              className={`text-[10px] ${
+                data.environment === "production" 
+                  ? "bg-production/10 text-production border-production" 
+                  : "bg-sandbox/10 text-sandbox border-sandbox"
+              }`}
+            >
+              {data.environment.toUpperCase()}
+            </Badge>
           </div>
-          <div className="flex justify-between items-baseline">
-            <span className="text-xs text-muted-foreground">Day P/L</span>
-            <span className={`number-mono font-medium ${data.day_pnl >= 0 ? "bull-text" : "bear-text"}`}>
-              {data.day_pnl >= 0 ? "+" : ""}${data.day_pnl.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              <span className="text-xs ml-1">({data.day_pnl_pct >= 0 ? "+" : ""}{data.day_pnl_pct.toFixed(2)}%)</span>
-            </span>
-          </div>
-          <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">Unrealized</span>
-            <span className={`number-mono ${data.unrealized_pnl >= 0 ? "bull-text" : "bear-text"}`}>
-              {data.unrealized_pnl >= 0 ? "+" : ""}${data.unrealized_pnl.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-            </span>
-          </div>
-          <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">Realized</span>
-            <span className={`number-mono ${data.realized_pnl >= 0 ? "bull-text" : "bear-text"}`}>
-              {data.realized_pnl >= 0 ? "+" : ""}${data.realized_pnl.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-            </span>
+          <div className="space-y-1">
+            <div className="number-mono text-sm font-medium">{data.account_id}</div>
+            <div className="text-xs text-muted-foreground">{data.market}</div>
           </div>
         </div>
-      </div>
 
-      <div className="border-t border-border pt-4">
-        <h3 className="text-sm font-medium text-muted-foreground mb-3">Liquidity</h3>
-        <div className="space-y-2 text-xs">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground font-medium">Settled Cash</span>
-            <span className="number-mono font-semibold text-sm text-foreground">
-              ${data.settled_cash.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-            </span>
+        <Separator />
+
+        {/* Equity & P/L */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Equity & P/L</h3>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Buying Power</span>
-            <span className="number-mono">
-              ${data.buying_power.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Margin Available</span>
-            <span className="number-mono">
-              ${data.margin_available.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-            </span>
+          <div className="space-y-3">
+            <div className="flex justify-between items-baseline">
+              <span className="text-xs text-muted-foreground">Total Equity</span>
+              <span className="number-mono text-lg font-bold text-foreground">
+                ${data.equity.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="flex justify-between items-baseline">
+              <span className="text-xs text-muted-foreground">Day P/L</span>
+              <div className="text-right">
+                <div className={`number-mono font-bold ${data.day_pnl >= 0 ? "bull-text" : "bear-text"}`}>
+                  {data.day_pnl >= 0 ? "+" : ""}${Math.abs(data.day_pnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <div className={`text-xs ${data.day_pnl >= 0 ? "bull-text" : "bear-text"}`}>
+                  ({data.day_pnl_pct >= 0 ? "+" : ""}{data.day_pnl_pct.toFixed(2)}%)
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border">
+              <div>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Unrealized</div>
+                <div className={`number-mono text-sm font-semibold ${data.unrealized_pnl >= 0 ? "bull-text" : "bear-text"}`}>
+                  {data.unrealized_pnl >= 0 ? "+" : ""}${Math.abs(data.unrealized_pnl).toLocaleString("en-US", { minimumFractionDigits: 0 })}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Realized</div>
+                <div className={`number-mono text-sm font-semibold ${data.realized_pnl >= 0 ? "bull-text" : "bear-text"}`}>
+                  {data.realized_pnl >= 0 ? "+" : ""}${Math.abs(data.realized_pnl).toLocaleString("en-US", { minimumFractionDigits: 0 })}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="border-t border-border pt-4">
-        <h3 className="text-sm font-medium text-muted-foreground mb-3">Portfolio Greeks</h3>
-        <div className="flex gap-2">
-          <Badge variant="outline" className="flex-1 justify-center">
-            <span className="text-xs">Δ {data.portfolio_delta.toFixed(1)}</span>
-          </Badge>
-          <Badge variant="outline" className="flex-1 justify-center">
-            <span className="text-xs">Θ {data.portfolio_theta.toFixed(1)}</span>
-          </Badge>
-          <Badge variant="outline" className="flex-1 justify-center">
-            <span className="text-xs">ν {data.portfolio_vega.toFixed(1)}</span>
-          </Badge>
+        <Separator />
+
+        {/* Liquidity */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Liquidity</h3>
+          </div>
+          <div className="space-y-2.5">
+            <div className="bg-primary/5 border border-primary/20 rounded-md p-2.5">
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Settled Cash</div>
+              <div className="number-mono text-base font-bold text-foreground">
+                ${data.settled_cash.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Buying Power</span>
+              <span className="number-mono font-semibold">
+                ${data.buying_power.toLocaleString("en-US", { minimumFractionDigits: 0 })}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Margin Available</span>
+              <span className="number-mono font-semibold">
+                ${data.margin_available.toLocaleString("en-US", { minimumFractionDigits: 0 })}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Portfolio Greeks */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Portfolio Greeks</h3>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-card border border-border rounded-md p-2.5 text-center">
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Delta</div>
+              <div className={`number-mono text-base font-bold ${getGreekColor(data.portfolio_delta, 'delta')}`}>
+                {data.portfolio_delta >= 0 ? "+" : ""}{data.portfolio_delta.toFixed(1)}
+              </div>
+            </div>
+            <div className="bg-card border border-border rounded-md p-2.5 text-center">
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Theta</div>
+              <div className={`number-mono text-base font-bold ${getGreekColor(data.portfolio_theta, 'theta')}`}>
+                {data.portfolio_theta.toFixed(1)}
+              </div>
+            </div>
+            <div className="bg-card border border-border rounded-md p-2.5 text-center">
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Vega</div>
+              <div className={`number-mono text-base font-bold ${getGreekColor(data.portfolio_vega, 'vega')}`}>
+                {data.portfolio_vega >= 0 ? "+" : ""}{data.portfolio_vega.toFixed(1)}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </Card>
