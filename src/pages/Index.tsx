@@ -9,6 +9,9 @@ import { KPIGrid } from "@/components/KPIGrid";
 import { TradingViewChart } from "@/components/TradingViewChart";
 import { OptionsChain } from "@/components/OptionsChain";
 import { OptionsPositionsTable } from "@/components/OptionsPositionsTable";
+import { OptionsOrderTicket } from "@/components/OptionsOrderTicket";
+import { NewsAlertsPanel } from "@/components/NewsAlertsPanel";
+import { TraderNotesWidget } from "@/components/TraderNotesWidget";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -184,10 +187,18 @@ const Index = () => {
             </div>
 
             <div>
+              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Options Order Ticket</h3>
+              <OptionsOrderTicket defaultSymbol={currentSymbol} />
+            </div>
+
+            <div>
               <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">News & Alerts</h3>
-              <Card className="p-4 text-center text-sm text-muted-foreground">
-                No recent news
-              </Card>
+              <NewsAlertsPanel />
+            </div>
+
+            <div>
+              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Trader Notes</h3>
+              <TraderNotesWidget defaultSymbol={currentSymbol} />
             </div>
           </div>
         </div>
