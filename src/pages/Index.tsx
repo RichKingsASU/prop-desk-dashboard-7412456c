@@ -6,6 +6,7 @@ import { AccountPanel } from "@/components/AccountPanel";
 import { BotStatusPanel } from "@/components/BotStatusPanel";
 import { MasterControlPanel } from "@/components/MasterControlPanel";
 import { KPIGrid } from "@/components/KPIGrid";
+import { TradingViewChart } from "@/components/TradingViewChart";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 
@@ -138,12 +139,7 @@ const Index = () => {
           <div className="lg:col-span-2 space-y-4">
             <div>
               <h2 className="text-lg font-semibold mb-3 text-foreground">Intraday Chart</h2>
-              <Card className="p-8 h-96 flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-muted-foreground mb-2">Chart visualization coming soon</p>
-                  <p className="text-xs text-muted-foreground">Will display candlestick chart with overlays</p>
-                </div>
-              </Card>
+              <TradingViewChart symbol={currentSymbol} />
             </div>
 
             <div>
