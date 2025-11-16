@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Wifi, WifiOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,12 +11,34 @@ import { FlowMomentum } from "@/components/console/FlowMomentum";
 import { ConsolePositionCard } from "@/components/console/ConsolePositionCard";
 import { MicroNotes } from "@/components/console/MicroNotes";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRealtimePrice } from "@/hooks/useRealtimePrice";
+import { useToast } from "@/hooks/use-toast";
 
 const Console = () => {
   const { symbol } = useParams<{ symbol: string }>();
+  const { toast } = useToast();
   const [snapshotData, setSnapshotData] = useState<any>(null);
   const [levelsData, setLevelsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+
+  // Handle real-time price updates
+  const handlePriceUpdate = useCallback((update: any) => {
+    setSnapshotData((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        last_price: update.price,
+        last_price_change: update.change,
+        last_price_change_pct: update.change_pct,
+        timestamp: update.timestamp,
+      };
+    });
+    setLastUpdate(new Date());
+  }, []);
+
+  // WebSocket connection for real-time prices
+  const { connected } = useRealtimePrice(symbol || "SPY", handlePriceUpdate);
 
   useEffect(() => {
     // Mock data fetching - replace with actual API calls
@@ -66,14 +88,25 @@ const Console = () => {
       });
 
       setLoading(false);
+      setLastUpdate(new Date());
     };
 
     fetchData();
 
-    // Refresh every 15 seconds
-    const interval = setInterval(fetchData, 15000);
+    // Refresh snapshot and levels every 10 seconds
+    const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
   }, [symbol]);
+
+  // Show connection status changes
+  useEffect(() => {
+    if (connected) {
+      toast({
+        title: "Live Data Connected",
+        description: "Streaming real-time price updates",
+      });
+    }
+  }, [connected, toast]);
 
   const currentTime = new Date();
   const hour = currentTime.getHours();
@@ -126,12 +159,29 @@ const Console = () => {
                         {snapshotData.day_bias}
                       </Badge>
                       <Badge variant="outline">{session}</Badge>
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        {connected ? (
+                          <>
+                            <Wifi className="h-3 w-3 text-bull" />
+                            <span>Live</span>
+                          </>
+                        ) : (
+                          <>
+                            <WifiOff className="h-3 w-3 text-muted-foreground" />
+                            <span>Delayed</span>
+                          </>
+                        )}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        Updated {new Date(lastUpdate).toLocaleTimeString()}
+                      </span>
                     </>
                   )}
                   {loading && (
                     <>
                       <Skeleton className="h-5 w-16" />
                       <Skeleton className="h-5 w-20" />
+                      <Skeleton className="h-5 w-16" />
                     </>
                   )}
                 </div>
