@@ -8,6 +8,7 @@ import { MasterControlPanel } from "@/components/MasterControlPanel";
 import { KPIGrid } from "@/components/KPIGrid";
 import { TradingViewChart } from "@/components/TradingViewChart";
 import { OptionsChain } from "@/components/OptionsChain";
+import { OptionsPositionsTable } from "@/components/OptionsPositionsTable";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -159,24 +160,22 @@ const Index = () => {
           {/* Command & Status Column - 1/3 width */}
           <div className="space-y-4">
             <div>
-              <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Account & Risk</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Account & Risk</h3>
               <AccountPanel data={accountData} loading={false} />
             </div>
 
             <div>
-              <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Options Positions</h3>
-              <Card className="p-4 text-center text-sm text-muted-foreground">
-                No positions
-              </Card>
+              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Options Positions</h3>
+              <OptionsPositionsTable />
             </div>
             
             <div>
-              <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Bot Status</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Bot Status</h3>
               <BotStatusPanel data={botStatus} loading={false} />
             </div>
             
             <div>
-              <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Master Controls</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Master Controls</h3>
               <MasterControlPanel
                 controls={botControls}
                 onControlChange={handleControlChange}
@@ -185,7 +184,7 @@ const Index = () => {
             </div>
 
             <div>
-              <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">News & Alerts</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">News & Alerts</h3>
               <Card className="p-4 text-center text-sm text-muted-foreground">
                 No recent news
               </Card>
