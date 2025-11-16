@@ -4,7 +4,7 @@ import { AccountPanel } from "@/components/AccountPanel";
 import { BotStatusPanel } from "@/components/BotStatusPanel";
 import { MasterControlPanel } from "@/components/MasterControlPanel";
 import { KPIGrid } from "@/components/KPIGrid";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 
 const Index = () => {
@@ -114,81 +114,81 @@ const Index = () => {
         dayPnlPct={accountData?.day_pnl_pct || 0}
       />
 
-      <div className="flex gap-4 p-4">
-        {/* Left Column - Analysis */}
-        <div className="flex-1">
-          <Tabs defaultValue="kpis" className="w-full">
-            <TabsList className="w-full justify-start border-b rounded-none bg-transparent p-0">
-              <TabsTrigger value="chart" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
-                Chart
-              </TabsTrigger>
-              <TabsTrigger value="kpis" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
-                KPIs
-              </TabsTrigger>
-              <TabsTrigger value="options" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
-                Options Chain
-              </TabsTrigger>
-            </TabsList>
-
-            <div className="mt-4">
-              <TabsContent value="chart" className="mt-0">
-                <div className="trading-card p-8 h-[600px] flex items-center justify-center">
-                  <div className="text-center">
-                    <p className="text-muted-foreground mb-2">Chart visualization coming soon</p>
-                    <p className="text-xs text-muted-foreground">Will display candlestick chart with overlays</p>
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="kpis" className="mt-0">
-                <KPIGrid data={snapshotData} loading={false} />
-              </TabsContent>
-
-              <TabsContent value="options" className="mt-0">
-                <div className="trading-card p-8 h-[600px] flex items-center justify-center">
-                  <div className="text-center">
-                    <p className="text-muted-foreground mb-2">Options Chain coming soon</p>
-                    <p className="text-xs text-muted-foreground">Will display full options chain with Greeks</p>
-                  </div>
-                </div>
-              </TabsContent>
-            </div>
-          </Tabs>
+      <div className="p-4 space-y-4">
+        {/* Top Row - KPIs Grid */}
+        <div>
+          <h2 className="text-lg font-semibold mb-3 text-foreground">Market Analysis</h2>
+          <KPIGrid data={snapshotData} loading={!snapshotData} />
         </div>
 
-        {/* Right Column - Command & Status */}
-        <div className="w-80 space-y-4">
-          <AccountPanel data={accountData} loading={false} />
-          
-          <div>
-            <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Options Positions</h3>
-            <div className="trading-card p-4 text-center text-sm text-muted-foreground">
-              No positions
+        {/* Middle Row - Chart & Controls */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Chart & Options Section - 2/3 width */}
+          <div className="lg:col-span-2 space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold mb-3 text-foreground">Intraday Chart</h2>
+              <Card className="p-8 h-96 flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-muted-foreground mb-2">Chart visualization coming soon</p>
+                  <p className="text-xs text-muted-foreground">Will display candlestick chart with overlays</p>
+                </div>
+              </Card>
+            </div>
+
+            <div>
+              <h2 className="text-lg font-semibold mb-3 text-foreground">Options Chain</h2>
+              <Card className="p-8 h-96 flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-muted-foreground mb-2">Options Chain coming soon</p>
+                  <p className="text-xs text-muted-foreground">Will display full options chain with Greeks</p>
+                </div>
+              </Card>
             </div>
           </div>
 
-          <BotStatusPanel data={botStatus} loading={false} />
-          
-          <MasterControlPanel
-            controls={botControls}
-            onControlChange={handleControlChange}
-            onPanic={handlePanic}
-          />
+          {/* Command & Status Column - 1/3 width */}
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Account & Risk</h3>
+              <AccountPanel data={accountData} loading={false} />
+            </div>
 
-          <div>
-            <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">News & Alerts</h3>
-            <div className="trading-card p-4 text-center text-sm text-muted-foreground">
-              No recent news
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Options Positions</h3>
+              <Card className="p-4 text-center text-sm text-muted-foreground">
+                No positions
+              </Card>
+            </div>
+            
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Bot Status</h3>
+              <BotStatusPanel data={botStatus} loading={false} />
+            </div>
+            
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Master Controls</h3>
+              <MasterControlPanel
+                controls={botControls}
+                onControlChange={handleControlChange}
+                onPanic={handlePanic}
+              />
+            </div>
+
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">News & Alerts</h3>
+              <Card className="p-4 text-center text-sm text-muted-foreground">
+                No recent news
+              </Card>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Bottom Section - Trade History */}
-      <div className="p-4 pt-0">
-        <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Trade History</h3>
-        <div className="trading-card p-8 text-center text-sm text-muted-foreground">
-          No recent trades
+        {/* Bottom - Trade History */}
+        <div>
+          <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Trade History</h3>
+          <Card className="p-8 text-center text-sm text-muted-foreground">
+            No recent trades
+          </Card>
         </div>
       </div>
     </div>
