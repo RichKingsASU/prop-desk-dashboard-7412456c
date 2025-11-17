@@ -12,6 +12,13 @@ interface RiskCalculatorProps {
   currentPrice?: number;
   atrValue?: number;
   loading?: boolean;
+  selectedOption?: {
+    strike: number;
+    type: 'call' | 'put';
+    last: number;
+    delta: number;
+    theta: number;
+  } | null;
 }
 
 const calculatorSchema = z.object({
@@ -25,13 +32,18 @@ export function RiskCalculator({
   symbol = "SPY",
   currentPrice = 432.15,
   atrValue = 1.25,
-  loading = false 
+  loading = false,
+  selectedOption = null,
 }: RiskCalculatorProps) {
   const [accountEquity, setAccountEquity] = useState<string>("10000");
   const [riskPercent, setRiskPercent] = useState<number>(1);
   const [stopDistanceATR, setStopDistanceATR] = useState<number>(1.5);
   const [entryPrice, setEntryPrice] = useState<string>(currentPrice.toString());
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Determine if we're calculating for options or stock
+  const isOptionMode = selectedOption !== null;
+  const optionPremium = selectedOption?.last || 0;
 
   // Calculate risk metrics
   const calculateRisk = () => {
@@ -50,20 +62,36 @@ export function RiskCalculator({
       // Calculate dollar risk
       const dollarRisk = validated.accountEquity * (validated.riskPercent / 100);
       
-      // Calculate stop distance in dollars
-      const stopDistanceDollars = validated.stopDistanceATR * atrValue;
-      
-      // Calculate position size (shares)
-      const positionSize = Math.floor(dollarRisk / stopDistanceDollars);
-      
-      // Calculate total position value
-      const positionValue = positionSize * validated.entryPrice;
-      
-      // Calculate stop loss price (assuming long position)
-      const stopLossPrice = validated.entryPrice - stopDistanceDollars;
-      
-      // Calculate position as % of account
-      const positionPercent = (positionValue / validated.accountEquity) * 100;
+      let positionSize: number;
+      let positionValue: number;
+      let stopLossPrice: number;
+      let positionPercent: number;
+      let stopDistanceDollars: number;
+
+      if (isOptionMode && selectedOption) {
+        // OPTIONS CALCULATION
+        // Each contract = 100 shares, so we divide by (premium × 100)
+        const contractsNeeded = Math.floor(dollarRisk / (optionPremium * 100));
+        positionSize = contractsNeeded;
+        
+        // Position value for options = contracts × premium × 100
+        positionValue = contractsNeeded * optionPremium * 100;
+        
+        // For options, stop loss is typically based on % of premium or max loss = premium paid
+        // Here we'll assume max loss is the full premium (total debit paid)
+        stopDistanceDollars = optionPremium;
+        stopLossPrice = 0; // Options can go to zero
+        
+        // Position as % of account
+        positionPercent = (positionValue / validated.accountEquity) * 100;
+      } else {
+        // STOCK CALCULATION (original logic)
+        stopDistanceDollars = validated.stopDistanceATR * atrValue;
+        positionSize = Math.floor(dollarRisk / stopDistanceDollars);
+        positionValue = positionSize * validated.entryPrice;
+        stopLossPrice = validated.entryPrice - stopDistanceDollars;
+        positionPercent = (positionValue / validated.accountEquity) * 100;
+      }
 
       setErrors({});
       
@@ -128,12 +156,36 @@ export function RiskCalculator({
             <Calculator className="h-4 w-4" />
             Risk Calculator
           </CardTitle>
-          <Badge variant="outline" className="text-xs">
-            {symbol}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {isOptionMode && (
+              <Badge variant="secondary" className="text-xs">
+                Options Mode
+              </Badge>
+            )}
+            <Badge variant="outline">{symbol}</Badge>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Selected Option Display */}
+        {selectedOption && (
+          <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-primary">Selected Contract</span>
+              <Badge variant="outline" className={selectedOption.type === 'call' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}>
+                {selectedOption.type.toUpperCase()}
+              </Badge>
+            </div>
+            <div className="text-sm font-mono">
+              <span className="font-bold">${selectedOption.strike}</span> @ ${selectedOption.last.toFixed(2)}
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+              <div>Delta: {selectedOption.delta.toFixed(3)}</div>
+              <div>Theta: {selectedOption.theta.toFixed(3)}</div>
+            </div>
+          </div>
+        )}
+
         {/* Account Equity Input */}
         <div className="space-y-2">
           <Label htmlFor="accountEquity" className="text-xs text-muted-foreground">
@@ -252,11 +304,22 @@ export function RiskCalculator({
             </div>
             
             <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">Position Size:</span>
+              <span className="text-xs text-muted-foreground">
+                {isOptionMode ? 'Contracts:' : 'Position Size:'}
+              </span>
               <span className="font-mono font-bold text-primary text-lg">
-                {results.positionSize} shares
+                {results.positionSize} {isOptionMode ? 'contracts' : 'shares'}
               </span>
             </div>
+            
+            {isOptionMode && selectedOption && (
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-muted-foreground">Controls (Delta Adj):</span>
+                <span className="font-mono font-semibold text-foreground">
+                  {Math.abs(results.positionSize * 100 * selectedOption.delta).toFixed(0)} shares
+                </span>
+              </div>
+            )}
             
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Position Value:</span>
@@ -276,18 +339,33 @@ export function RiskCalculator({
               </span>
             </div>
             
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">Stop Loss Price:</span>
-              <span className="font-mono font-semibold text-destructive">
-                ${results.stopLossPrice.toFixed(2)}
-              </span>
-            </div>
+            {!isOptionMode && (
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-muted-foreground">Stop Loss Price:</span>
+                <span className="font-mono font-semibold text-destructive">
+                  ${results.stopLossPrice.toFixed(2)}
+                </span>
+              </div>
+            )}
+
+            {isOptionMode && selectedOption && (
+              <div className="p-2 bg-muted/30 rounded border border-border">
+                <p className="text-xs text-muted-foreground">
+                  Max Loss: ${(results.positionSize * optionPremium * 100).toFixed(2)} 
+                  {selectedOption.theta < 0 && (
+                    <span className="block mt-1">
+                      Daily Theta decay: ${(Math.abs(selectedOption.theta) * results.positionSize * 100).toFixed(2)}
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
 
             {results.positionPercent > 50 && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                 <AlertCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
                 <p className="text-xs text-destructive">
-                  Warning: Position exceeds 50% of account. Consider reducing risk or stop distance.
+                  Warning: Position exceeds 50% of account. Consider reducing risk or {isOptionMode ? 'premium exposure' : 'stop distance'}.
                 </p>
               </div>
             )}
