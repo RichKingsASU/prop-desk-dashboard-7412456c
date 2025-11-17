@@ -42,6 +42,7 @@ const Console = () => {
   const [calculatedPositionSize, setCalculatedPositionSize] = useState<number>(0);
   const [battlegroundOpen, setBattlegroundOpen] = useState(false);
   const [battlegroundLevel, setBattlegroundLevel] = useState(236.50);
+  const [battleSessions, setBattleSessions] = useState<any[]>([]);
 
   // Handle real-time price updates
   const handlePriceUpdate = useCallback((update: any) => {
@@ -388,6 +389,8 @@ const Console = () => {
         symbol={symbol || "SPY"}
         priceLevel={battlegroundLevel}
         currentPrice={snapshotData?.last_price || 432.15}
+        sessions={battleSessions}
+        onSessionComplete={(session) => setBattleSessions(prev => [...prev, session])}
       />
     </div>
   );
