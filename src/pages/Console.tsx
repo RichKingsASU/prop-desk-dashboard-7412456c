@@ -17,6 +17,7 @@ import { PerformanceKpi } from "@/components/expert/PerformanceKpi";
 import { PerformanceChart } from "@/components/expert/PerformanceChart";
 import { RiskCalculator } from "@/components/expert/RiskCalculator";
 import { OptionChainSelector } from "@/components/expert/OptionChainSelector";
+import { OrderEntryPanel } from "@/components/expert/OrderEntryPanel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRealtimePrice } from "@/hooks/useRealtimePrice";
 import { useTrailingStopAutomation } from "@/hooks/useTrailingStopAutomation";
@@ -37,6 +38,7 @@ const Console = () => {
     trailingUnit: 'atr',
   });
   const [selectedOptionContract, setSelectedOptionContract] = useState<any>(null);
+  const [calculatedPositionSize, setCalculatedPositionSize] = useState<number>(0);
 
   // Handle real-time price updates
   const handlePriceUpdate = useCallback((update: any) => {
@@ -260,6 +262,7 @@ const Console = () => {
               atrValue={snapshotData?.atr_14}
               loading={loading}
               selectedOption={selectedOptionContract}
+              onCalculate={(results) => setCalculatedPositionSize(results.positionSize)}
             />
             
             <OptionChainSelector
@@ -269,6 +272,13 @@ const Console = () => {
               onSelect={(contract) => {
                 setSelectedOptionContract(contract);
               }}
+            />
+            
+            <OrderEntryPanel
+              symbol={symbol || "SPY"}
+              selectedOption={selectedOptionContract}
+              calculatedSize={calculatedPositionSize}
+              loading={loading}
             />
           </div>
 

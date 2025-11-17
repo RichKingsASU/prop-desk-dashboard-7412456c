@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calculator, DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ interface RiskCalculatorProps {
     delta: number;
     theta: number;
   } | null;
+  onCalculate?: (results: { positionSize: number; positionValue: number; dollarRisk: number }) => void;
 }
 
 const calculatorSchema = z.object({
@@ -34,6 +35,7 @@ export function RiskCalculator({
   atrValue = 1.25,
   loading = false,
   selectedOption = null,
+  onCalculate,
 }: RiskCalculatorProps) {
   const [accountEquity, setAccountEquity] = useState<string>("10000");
   const [riskPercent, setRiskPercent] = useState<number>(1);
@@ -127,6 +129,17 @@ export function RiskCalculator({
   };
 
   const results = calculateRisk();
+
+  // Notify parent of calculation results
+  useEffect(() => {
+    if (results.valid && onCalculate) {
+      onCalculate({
+        positionSize: results.positionSize,
+        positionValue: results.positionValue,
+        dollarRisk: results.dollarRisk,
+      });
+    }
+  }, [results.valid, results.positionSize, results.positionValue, results.dollarRisk, onCalculate]);
 
   if (loading) {
     return (
