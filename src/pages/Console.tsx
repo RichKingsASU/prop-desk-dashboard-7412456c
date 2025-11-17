@@ -14,6 +14,7 @@ import { TradeHistoryTable } from "@/components/console/TradeHistoryTable";
 import { TrailingStopControl } from "@/components/expert/TrailingStopControl";
 import { LiquidityKpi } from "@/components/expert/LiquidityKpi";
 import { PerformanceKpi } from "@/components/expert/PerformanceKpi";
+import { PerformanceChart } from "@/components/expert/PerformanceChart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRealtimePrice } from "@/hooks/useRealtimePrice";
 import { useToast } from "@/hooks/use-toast";
@@ -222,6 +223,8 @@ const Console = () => {
               totalTrades={50}
               loading={loading}
             />
+            
+            <PerformanceChart loading={loading} />
           </div>
 
           {/* Center Column - Execution Chart + Decision Strip */}
