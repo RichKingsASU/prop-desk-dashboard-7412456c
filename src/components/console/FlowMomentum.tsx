@@ -51,10 +51,12 @@ export const FlowMomentum = ({ snapshotData, loading }: FlowMomentumProps) => {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* RVOL */}
-        <div className="text-center">
+        <div className={`text-center p-3 rounded-lg ${snapshotData.rvol >= 2.0 ? 'bg-yellow-50' : ''}`}>
           <div className="flex items-center justify-center gap-2 mb-2">
             <Activity className="h-4 w-4 text-primary" />
-            <span className="text-xs font-medium text-muted-foreground">Relative Volume</span>
+            <span className="text-xs font-medium text-muted-foreground">
+              {snapshotData.rvol >= 2.0 ? `${snapshotData.rvol.toFixed(1)}× Volume` : 'Relative Volume'}
+            </span>
           </div>
           <div className="flex items-center justify-center">
             <div className="relative w-20 h-20">
