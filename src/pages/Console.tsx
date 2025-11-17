@@ -15,6 +15,7 @@ import { TrailingStopControl } from "@/components/expert/TrailingStopControl";
 import { LiquidityKpi } from "@/components/expert/LiquidityKpi";
 import { PerformanceKpi } from "@/components/expert/PerformanceKpi";
 import { PerformanceChart } from "@/components/expert/PerformanceChart";
+import { RiskCalculator } from "@/components/expert/RiskCalculator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRealtimePrice } from "@/hooks/useRealtimePrice";
 import { useTrailingStopAutomation } from "@/hooks/useTrailingStopAutomation";
@@ -250,6 +251,13 @@ const Console = () => {
             />
             
             <PerformanceChart loading={loading} />
+            
+            <RiskCalculator 
+              symbol={symbol || "SPY"}
+              currentPrice={snapshotData?.last_price}
+              atrValue={snapshotData?.atr_14}
+              loading={loading}
+            />
           </div>
 
           {/* Center Column - Execution Chart + Decision Strip */}
