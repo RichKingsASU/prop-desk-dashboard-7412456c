@@ -3,8 +3,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BattlegroundHistory } from "./BattlegroundHistory";
+import { useToast } from "@/hooks/use-toast";
+
+interface BattleSession {
+  id: string;
+  timestamp: Date;
+  symbol: string;
+  priceLevel: number;
+  outcome: 'win' | 'loss' | 'active';
+  finalStatus: string;
+  statusSequence: string[];
+  duration: number;
+}
 
 interface BattlegroundModeProps {
   open: boolean;
@@ -12,6 +25,8 @@ interface BattlegroundModeProps {
   symbol: string;
   priceLevel: number;
   currentPrice: number;
+  sessions: BattleSession[];
+  onSessionComplete: (session: BattleSession) => void;
 }
 
 type BattleStatus = "TESTING" | "DEFENDING" | "WEAKENING" | "BROKEN" | "HOLDING";
@@ -21,8 +36,11 @@ export const BattlegroundMode = ({
   onOpenChange, 
   symbol, 
   priceLevel,
-  currentPrice: initialPrice 
+  currentPrice: initialPrice,
+  sessions,
+  onSessionComplete
 }: BattlegroundModeProps) => {
+  const { toast } = useToast();
   const [currentPrice, setCurrentPrice] = useState(initialPrice);
   const [status, setStatus] = useState<BattleStatus>("TESTING");
   const [conviction, setConviction] = useState(50); // 0 = Bears, 100 = Bulls
@@ -30,6 +48,10 @@ export const BattlegroundMode = ({
   const [priceHistory, setPriceHistory] = useState<number[]>([initialPrice]);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [wickData, setWickData] = useState({ bullish: 0, bearish: 0 });
+  const [sessionId] = useState(`battle_${Date.now()}`);
+  const [sessionStartTime] = useState(Date.now());
+  const [statusHistory, setStatusHistory] = useState<BattleStatus[]>([]);
+  const [battleActive, setBattleActive] = useState(true);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastStatusRef = useRef<BattleStatus>(status);
@@ -129,6 +151,12 @@ export const BattlegroundMode = ({
     
     setStatus(newStatus);
     setConviction(newConviction);
+    
+    // Track status changes
+    if (lastStatusRef.current !== newStatus) {
+      setStatusHistory(prev => [...prev, newStatus]);
+    }
+    
     lastStatusRef.current = newStatus;
   }, [currentPrice, priceHistory, priceLevel, open, audioEnabled]);
 
@@ -158,6 +186,29 @@ export const BattlegroundMode = ({
   const nextTargetUp = priceLevel + 1.89;
   const nextTargetDown = priceLevel - 1.06;
 
+  const handleBattleEnd = (outcome: 'win' | 'loss') => {
+    const duration = Math.floor((Date.now() - sessionStartTime) / 1000);
+    const session: BattleSession = {
+      id: sessionId,
+      timestamp: new Date(),
+      symbol,
+      priceLevel,
+      outcome,
+      finalStatus: status,
+      statusSequence: [...new Set(statusHistory)],
+      duration
+    };
+    
+    onSessionComplete(session);
+    setBattleActive(false);
+    
+    toast({
+      title: outcome === 'win' ? '🎯 Battle Won!' : '💥 Battle Lost',
+      description: `${symbol} @ $${priceLevel.toFixed(2)} - Final status: ${status}`,
+      variant: outcome === 'win' ? 'default' : 'destructive'
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
@@ -177,6 +228,34 @@ export const BattlegroundMode = ({
         </DialogHeader>
 
         <div className="flex-1 space-y-4 overflow-y-auto">
+          {/* Battle Outcome Buttons */}
+          {battleActive && (
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                onClick={() => handleBattleEnd('win')}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Mark Win
+              </Button>
+              <Button
+                onClick={() => handleBattleEnd('loss')}
+                variant="destructive"
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                Mark Loss
+              </Button>
+            </div>
+          )}
+
+          {!battleActive && (
+            <Card className="p-4 bg-muted">
+              <div className="text-center text-sm">
+                Battle concluded. Review statistics below.
+              </div>
+            </Card>
+          )}
+          
           {/* Heartbeat Ticker */}
           <Card className="p-4 bg-black/40">
             <div className="relative h-32">
@@ -304,6 +383,9 @@ export const BattlegroundMode = ({
               </div>
             </div>
           </Card>
+
+          {/* Performance History */}
+          <BattlegroundHistory sessions={sessions} />
         </div>
       </DialogContent>
     </Dialog>
