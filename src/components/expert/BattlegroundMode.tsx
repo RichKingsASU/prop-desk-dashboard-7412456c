@@ -3,10 +3,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Volume2, VolumeX, CheckCircle, XCircle } from "lucide-react";
+import { Volume2, VolumeX, CheckCircle, XCircle, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BattlegroundHistory } from "./BattlegroundHistory";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 
 type BattleStatus = "TESTING" | "DEFENDING" | "WEAKENING" | "BROKEN" | "HOLDING";
 
@@ -50,6 +58,36 @@ interface BattlegroundModeProps {
   onSessionComplete: (session: BattleSession) => void;
 }
 
+interface DetectionThresholds {
+  bouncePercent: number;      // Percentage above level for win (default 0.3)
+  breakPercent: number;        // Percentage below level for loss (default 0.3)
+  sustainedTickCount: number;  // Number of consecutive ticks to confirm (default 5)
+  testDistance: number;        // Dollar amount to consider "tested" (default 0.20)
+}
+
+const DEFAULT_THRESHOLDS: DetectionThresholds = {
+  bouncePercent: 0.3,
+  breakPercent: 0.3,
+  sustainedTickCount: 5,
+  testDistance: 0.20
+};
+
+const loadThresholds = (): DetectionThresholds => {
+  const stored = localStorage.getItem('battleground-thresholds');
+  if (stored) {
+    try {
+      return { ...DEFAULT_THRESHOLDS, ...JSON.parse(stored) };
+    } catch {
+      return DEFAULT_THRESHOLDS;
+    }
+  }
+  return DEFAULT_THRESHOLDS;
+};
+
+const saveThresholds = (thresholds: DetectionThresholds) => {
+  localStorage.setItem('battleground-thresholds', JSON.stringify(thresholds));
+};
+
 export const BattlegroundMode = ({
   open, 
   onOpenChange, 
@@ -75,10 +113,18 @@ export const BattlegroundMode = ({
   const [highestPrice, setHighestPrice] = useState(initialPrice);
   const [priceTicks, setPriceTicks] = useState<PriceTick[]>([]);
   const [statusChanges, setStatusChanges] = useState<StatusChange[]>([]);
+  const [thresholds, setThresholds] = useState<DetectionThresholds>(loadThresholds());
+  const [settingsOpen, setSettingsOpen] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastStatusRef = useRef<BattleStatus>(status);
   const autoCompleteTriggeredRef = useRef(false);
+
+  const handleThresholdChange = (key: keyof DetectionThresholds, value: number) => {
+    const newThresholds = { ...thresholds, [key]: value };
+    setThresholds(newThresholds);
+    saveThresholds(newThresholds);
+  };
 
   // Initialize audio
   useEffect(() => {
@@ -201,7 +247,7 @@ export const BattlegroundMode = ({
     lastStatusRef.current = newStatus;
   }, [currentPrice, priceHistory, priceLevel, open, audioEnabled]);
 
-  // Automatic outcome detection
+  // Automatic outcome detection with configurable thresholds
   useEffect(() => {
     if (!open || !battleActive || autoCompleteTriggeredRef.current) return;
 
@@ -210,31 +256,31 @@ export const BattlegroundMode = ({
     
     // Win condition: Price bounced significantly above the level
     // Must have tested the level (gotten close) and then bounced back up
-    const testedLevel = lowestPrice <= priceLevel + 0.2; // Got within $0.20 of level
-    const bouncedSignificantly = currentPrice > priceLevel + (priceLevel * 0.003); // 0.3% above level
-    const sustainedBounce = priceHistory.slice(-5).every(p => p > priceLevel); // Last 5 ticks above level
+    const testedLevel = lowestPrice <= priceLevel + thresholds.testDistance;
+    const bouncedSignificantly = currentPrice > priceLevel + (priceLevel * (thresholds.bouncePercent / 100));
+    const sustainedBounce = priceHistory.slice(-thresholds.sustainedTickCount).every(p => p > priceLevel);
     
-    if (testedLevel && bouncedSignificantly && sustainedBounce && percentFromLevel > 0.3) {
+    if (testedLevel && bouncedSignificantly && sustainedBounce && percentFromLevel > thresholds.bouncePercent) {
       autoCompleteTriggeredRef.current = true;
-      const reason = `Price bounced ${percentFromLevel.toFixed(2)}% above level after testing it at $${lowestPrice.toFixed(2)}`;
+      const reason = `Price bounced ${percentFromLevel.toFixed(2)}% above level after testing it at $${lowestPrice.toFixed(2)} (threshold: ${thresholds.bouncePercent}%)`;
       setTimeout(() => handleBattleEnd('win', true, reason), 500);
       return;
     }
     
     // Loss condition: Price broke through and continued downward
     // Must have broken below the level and continued dropping
-    const brokeThroughLevel = currentPrice < priceLevel - 0.1; // Below level by $0.10
-    const continuedDrop = currentPrice < priceLevel - (priceLevel * 0.003); // 0.3% below level
-    const sustainedBreak = priceHistory.slice(-5).every(p => p < priceLevel - 0.05); // Last 5 ticks below
-    const droppedFromHigh = highestPrice > priceLevel; // Was above at some point
+    const brokeThroughLevel = currentPrice < priceLevel - (thresholds.testDistance / 2);
+    const continuedDrop = currentPrice < priceLevel - (priceLevel * (thresholds.breakPercent / 100));
+    const sustainedBreak = priceHistory.slice(-thresholds.sustainedTickCount).every(p => p < priceLevel - (thresholds.testDistance / 4));
+    const droppedFromHigh = highestPrice > priceLevel;
     
-    if (brokeThroughLevel && continuedDrop && sustainedBreak && droppedFromHigh && percentFromLevel > 0.3) {
+    if (brokeThroughLevel && continuedDrop && sustainedBreak && droppedFromHigh && percentFromLevel > thresholds.breakPercent) {
       autoCompleteTriggeredRef.current = true;
-      const reason = `Price broke through and dropped ${percentFromLevel.toFixed(2)}% below level, continuing downward from high of $${highestPrice.toFixed(2)}`;
+      const reason = `Price broke through and dropped ${percentFromLevel.toFixed(2)}% below level, continuing downward from high of $${highestPrice.toFixed(2)} (threshold: ${thresholds.breakPercent}%)`;
       setTimeout(() => handleBattleEnd('loss', true, reason), 500);
       return;
     }
-  }, [currentPrice, priceHistory, priceLevel, open, battleActive, lowestPrice, highestPrice]);
+  }, [currentPrice, priceHistory, priceLevel, open, battleActive, lowestPrice, highestPrice, thresholds]);
 
   const getStatusColor = (s: BattleStatus) => {
     switch (s) {
@@ -303,13 +349,119 @@ export const BattlegroundMode = ({
             <DialogTitle className="text-2xl font-bold">
               ⚔️ Battleground Mode: {symbol} @ ${priceLevel.toFixed(2)}
             </DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setAudioEnabled(!audioEnabled)}
-            >
-              {audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Popover open={settingsOpen} onOpenChange={setSettingsOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-semibold mb-2">Auto-Detection Settings</h4>
+                      <p className="text-xs text-muted-foreground mb-4">
+                        Adjust sensitivity for automatic win/loss detection
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <Label className="text-xs">Bounce % (Win)</Label>
+                          <span className="text-xs font-mono">{thresholds.bouncePercent}%</span>
+                        </div>
+                        <Slider
+                          value={[thresholds.bouncePercent]}
+                          onValueChange={(v) => handleThresholdChange('bouncePercent', v[0])}
+                          min={0.1}
+                          max={1.0}
+                          step={0.05}
+                          className="w-full"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Price must bounce above level by this %
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <Label className="text-xs">Break % (Loss)</Label>
+                          <span className="text-xs font-mono">{thresholds.breakPercent}%</span>
+                        </div>
+                        <Slider
+                          value={[thresholds.breakPercent]}
+                          onValueChange={(v) => handleThresholdChange('breakPercent', v[0])}
+                          min={0.1}
+                          max={1.0}
+                          step={0.05}
+                          className="w-full"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Price must drop below level by this %
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <Label className="text-xs">Sustained Ticks</Label>
+                          <span className="text-xs font-mono">{thresholds.sustainedTickCount}</span>
+                        </div>
+                        <Slider
+                          value={[thresholds.sustainedTickCount]}
+                          onValueChange={(v) => handleThresholdChange('sustainedTickCount', v[0])}
+                          min={3}
+                          max={10}
+                          step={1}
+                          className="w-full"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Consecutive ticks required to confirm
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <Label className="text-xs">Test Distance ($)</Label>
+                          <Input
+                            type="number"
+                            value={thresholds.testDistance}
+                            onChange={(e) => handleThresholdChange('testDistance', parseFloat(e.target.value) || 0.20)}
+                            step="0.05"
+                            min="0.05"
+                            max="1.00"
+                            className="w-20 h-7 text-xs"
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          How close price must get to "test" level
+                        </p>
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setThresholds(DEFAULT_THRESHOLDS);
+                        saveThresholds(DEFAULT_THRESHOLDS);
+                      }}
+                      className="w-full"
+                    >
+                      Reset to Defaults
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setAudioEnabled(!audioEnabled)}
+              >
+                {audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
         </DialogHeader>
 
@@ -318,7 +470,7 @@ export const BattlegroundMode = ({
           {battleActive && (
             <Card className="p-3 bg-muted/50">
               <div className="text-xs text-muted-foreground mb-2 text-center">
-                Auto-detection active | Manual override:
+                Auto-detection: ±{thresholds.bouncePercent}%/{thresholds.breakPercent}%, {thresholds.sustainedTickCount} ticks | Manual override:
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Button
