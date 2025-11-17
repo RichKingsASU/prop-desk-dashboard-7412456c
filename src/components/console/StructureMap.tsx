@@ -71,6 +71,13 @@ export const StructureMap = ({ snapshotData, levelsData, loading }: StructureMap
     return { pctDist, atrDist };
   };
 
+  // ATR zone calculations (±0.25 ATR around each level)
+  const atrZoneWidth = 0.25 * atr;
+  const isInDangerZone = (levelPrice: number) => {
+    const distance = Math.abs(currentPrice - levelPrice);
+    return distance <= atrZoneWidth;
+  };
+
   // Structure summary
   const vwapDist = calculateDistance(snapshotData.vwap);
   const pdhDist = calculateDistance(levelsData.prev_day_high);
@@ -149,15 +156,27 @@ export const StructureMap = ({ snapshotData, levelsData, loading }: StructureMap
               {ceilings.slice(0, 4).map((level, idx) => {
                 const dist = calculateDistance(level.price);
                 const isNearest = idx === 0;
+                const inDangerZone = isInDangerZone(level.price);
                 return (
                   <div 
                     key={level.name} 
-                    className={`p-2 rounded border ${isNearest ? "border-bull bg-bull-muted" : "border-border"}`}
+                    className={`p-2 rounded border ${
+                      inDangerZone 
+                        ? "border-yellow-300 bg-yellow-50" 
+                        : isNearest 
+                          ? "border-bull bg-bull-muted" 
+                          : "border-border"
+                    }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-medium">{level.name}</span>
                         {isNearest && <Badge variant="outline" className="text-xs">Nearest</Badge>}
+                        {inDangerZone && (
+                          <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800 border-yellow-300">
+                            ATR Zone
+                          </Badge>
+                        )}
                       </div>
                       <span className="text-sm font-semibold number-mono">${level.price.toFixed(2)}</span>
                     </div>
@@ -192,15 +211,27 @@ export const StructureMap = ({ snapshotData, levelsData, loading }: StructureMap
               {floors.slice(0, 4).map((level, idx) => {
                 const dist = calculateDistance(level.price);
                 const isNearest = idx === 0;
+                const inDangerZone = isInDangerZone(level.price);
                 return (
                   <div 
                     key={level.name} 
-                    className={`p-2 rounded border ${isNearest ? "border-bear bg-bear-muted" : "border-border"}`}
+                    className={`p-2 rounded border ${
+                      inDangerZone 
+                        ? "border-yellow-300 bg-yellow-50" 
+                        : isNearest 
+                          ? "border-bear bg-bear-muted" 
+                          : "border-border"
+                    }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-medium">{level.name}</span>
                         {isNearest && <Badge variant="outline" className="text-xs">Nearest</Badge>}
+                        {inDangerZone && (
+                          <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800 border-yellow-300">
+                            ATR Zone
+                          </Badge>
+                        )}
                       </div>
                       <span className="text-sm font-semibold number-mono">${level.price.toFixed(2)}</span>
                     </div>

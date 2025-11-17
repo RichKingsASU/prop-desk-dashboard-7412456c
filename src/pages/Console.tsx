@@ -11,6 +11,9 @@ import { FlowMomentum } from "@/components/console/FlowMomentum";
 import { ConsolePositionCard } from "@/components/console/ConsolePositionCard";
 import { MicroNotes } from "@/components/console/MicroNotes";
 import { TradeHistoryTable } from "@/components/console/TradeHistoryTable";
+import { TrailingStopControl } from "@/components/expert/TrailingStopControl";
+import { LiquidityKpi } from "@/components/expert/LiquidityKpi";
+import { PerformanceKpi } from "@/components/expert/PerformanceKpi";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRealtimePrice } from "@/hooks/useRealtimePrice";
 import { useToast } from "@/hooks/use-toast";
@@ -195,12 +198,29 @@ const Console = () => {
       {/* 3-Column Layout */}
       <div className="p-4">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Left Column - Structure Map */}
+          {/* Left Column - Structure Map & Expert Controls */}
           <div className="lg:col-span-3 space-y-4">
             <StructureMap 
               snapshotData={snapshotData} 
               levelsData={levelsData} 
               loading={loading} 
+            />
+            
+            {/* Expert Trader Modules */}
+            <LiquidityKpi 
+              rvol={snapshotData?.rvol}
+              ticksPerMinute={350}
+              avgTicksPerMinute={120}
+              tradesPerMinute={45}
+              loading={loading}
+            />
+            
+            <PerformanceKpi 
+              winRate={72}
+              avgRR={2.3}
+              edge={0.34}
+              totalTrades={50}
+              loading={loading}
             />
           </div>
 
@@ -234,6 +254,19 @@ const Console = () => {
               currentPrice={snapshotData?.last_price}
               levelsData={levelsData}
               loading={loading}
+            />
+            
+            {/* Trailing Stop Control */}
+            <TrailingStopControl 
+              position={{
+                symbol: symbol || "SPY",
+                side: "long",
+                entryPrice: 430.50,
+                currentPrice: snapshotData?.last_price || 432.15,
+                quantity: 100,
+              }}
+              atrValue={snapshotData?.atr_14}
+              onApply={(config) => console.log("Stop config applied:", config)}
             />
             
             <MicroNotes 
