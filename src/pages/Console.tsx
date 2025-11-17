@@ -16,6 +16,7 @@ import { LiquidityKpi } from "@/components/expert/LiquidityKpi";
 import { PerformanceKpi } from "@/components/expert/PerformanceKpi";
 import { PerformanceChart } from "@/components/expert/PerformanceChart";
 import { RiskCalculator } from "@/components/expert/RiskCalculator";
+import { OptionChainSelector } from "@/components/expert/OptionChainSelector";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRealtimePrice } from "@/hooks/useRealtimePrice";
 import { useTrailingStopAutomation } from "@/hooks/useTrailingStopAutomation";
@@ -257,6 +258,15 @@ const Console = () => {
               currentPrice={snapshotData?.last_price}
               atrValue={snapshotData?.atr_14}
               loading={loading}
+            />
+            
+            <OptionChainSelector
+              symbol={symbol || "SPY"}
+              currentPrice={snapshotData?.last_price}
+              loading={loading}
+              onSelect={(contract) => {
+                console.log('Selected contract:', contract);
+              }}
             />
           </div>
 
