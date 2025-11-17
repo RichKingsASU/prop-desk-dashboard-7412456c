@@ -116,16 +116,24 @@ export const ExecutionChart = ({ symbol, levelsData, currentPrice, vwap, atr, lo
       ];
 
       levels.forEach(level => {
-        // Only show levels within 2% of current price
+        // Calculate distance from current price
         const pctDist = Math.abs((level.price - currentPrice) / currentPrice) * 100;
+        const isNear = pctDist <= 0.3; // Within 0.3%
+        
+        // Only show levels within 2% of current price
         if (pctDist < 2) {
+          const isResistance = level.price > currentPrice;
+          const label = isNear 
+            ? `${level.name} ${isResistance ? '(RESISTANCE)' : '(SUPPORT)'}` 
+            : level.name;
+          
           candleSeries.createPriceLine({
             price: level.price,
             color: level.color,
-            lineWidth: 1,
+            lineWidth: isNear ? 2 : 1,
             lineStyle: 2, // dashed
             axisLabelVisible: true,
-            title: level.name,
+            title: label,
           });
         }
       });

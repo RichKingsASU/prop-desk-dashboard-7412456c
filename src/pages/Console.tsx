@@ -10,6 +10,7 @@ import { DecisionStrip } from "@/components/console/DecisionStrip";
 import { FlowMomentum } from "@/components/console/FlowMomentum";
 import { ConsolePositionCard } from "@/components/console/ConsolePositionCard";
 import { MicroNotes } from "@/components/console/MicroNotes";
+import { TradeHistoryTable } from "@/components/console/TradeHistoryTable";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRealtimePrice } from "@/hooks/useRealtimePrice";
 import { useToast } from "@/hooks/use-toast";
@@ -240,6 +241,11 @@ const Console = () => {
             />
           </div>
         </div>
+      </div>
+
+      {/* Bottom Section - Trade History */}
+      <div className="p-6">
+        <TradeHistoryTable symbol={symbol} />
       </div>
     </div>
   );
