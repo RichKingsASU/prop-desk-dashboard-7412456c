@@ -18,6 +18,7 @@ import { PerformanceChart } from "@/components/expert/PerformanceChart";
 import { RiskCalculator } from "@/components/expert/RiskCalculator";
 import { OptionChainSelector } from "@/components/expert/OptionChainSelector";
 import { OrderEntryPanel } from "@/components/expert/OrderEntryPanel";
+import { BattlegroundMode } from "@/components/expert/BattlegroundMode";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRealtimePrice } from "@/hooks/useRealtimePrice";
 import { useTrailingStopAutomation } from "@/hooks/useTrailingStopAutomation";
@@ -39,6 +40,8 @@ const Console = () => {
   });
   const [selectedOptionContract, setSelectedOptionContract] = useState<any>(null);
   const [calculatedPositionSize, setCalculatedPositionSize] = useState<number>(0);
+  const [battlegroundOpen, setBattlegroundOpen] = useState(false);
+  const [battlegroundLevel, setBattlegroundLevel] = useState(236.50);
 
   // Handle real-time price updates
   const handlePriceUpdate = useCallback((update: any) => {
@@ -237,6 +240,15 @@ const Console = () => {
               loading={loading} 
             />
             
+            <Button 
+              onClick={() => setBattlegroundOpen(true)}
+              className="w-full"
+              variant="outline"
+              size="lg"
+            >
+              ⚔️ Engage Battleground Mode
+            </Button>
+            
             {/* Expert Trader Modules */}
             <LiquidityKpi 
               rvol={snapshotData?.rvol}
@@ -368,6 +380,15 @@ const Console = () => {
       <div className="p-6">
         <TradeHistoryTable symbol={symbol} />
       </div>
+
+      {/* Battleground Mode Dialog */}
+      <BattlegroundMode 
+        open={battlegroundOpen}
+        onOpenChange={setBattlegroundOpen}
+        symbol={symbol || "SPY"}
+        priceLevel={battlegroundLevel}
+        currentPrice={snapshotData?.last_price || 432.15}
+      />
     </div>
   );
 };
