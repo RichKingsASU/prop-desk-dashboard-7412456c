@@ -36,6 +36,7 @@ const Console = () => {
     trailingDistance: 1.5,
     trailingUnit: 'atr',
   });
+  const [selectedOptionContract, setSelectedOptionContract] = useState<any>(null);
 
   // Handle real-time price updates
   const handlePriceUpdate = useCallback((update: any) => {
@@ -258,6 +259,7 @@ const Console = () => {
               currentPrice={snapshotData?.last_price}
               atrValue={snapshotData?.atr_14}
               loading={loading}
+              selectedOption={selectedOptionContract}
             />
             
             <OptionChainSelector
@@ -265,7 +267,7 @@ const Console = () => {
               currentPrice={snapshotData?.last_price}
               loading={loading}
               onSelect={(contract) => {
-                console.log('Selected contract:', contract);
+                setSelectedOptionContract(contract);
               }}
             />
           </div>
