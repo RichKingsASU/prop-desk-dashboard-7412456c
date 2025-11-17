@@ -1,7 +1,25 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Play } from "lucide-react";
+import { BattlegroundReplay } from "./BattlegroundReplay";
+
+type BattleStatus = "TESTING" | "DEFENDING" | "WEAKENING" | "BROKEN" | "HOLDING";
+
+interface PriceTick {
+  timestamp: number;
+  price: number;
+  status: BattleStatus;
+  conviction: number;
+}
+
+interface StatusChange {
+  timestamp: number;
+  fromStatus: BattleStatus;
+  toStatus: BattleStatus;
+}
 
 interface BattleSession {
   id: string;
@@ -11,7 +29,13 @@ interface BattleSession {
   outcome: 'win' | 'loss' | 'active';
   finalStatus: string;
   statusSequence: string[];
-  duration: number; // seconds
+  duration: number;
+  priceTicks?: PriceTick[];
+  statusChanges?: StatusChange[];
+  autoDetectionTrigger?: {
+    timestamp: number;
+    reason: string;
+  };
 }
 
 interface BattlegroundHistoryProps {
@@ -19,6 +43,14 @@ interface BattlegroundHistoryProps {
 }
 
 export const BattlegroundHistory = ({ sessions }: BattlegroundHistoryProps) => {
+  const [replayOpen, setReplayOpen] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<BattleSession | null>(null);
+
+  const handleReplayClick = (session: BattleSession) => {
+    setSelectedSession(session);
+    setReplayOpen(true);
+  };
+
   // Calculate statistics
   const completedSessions = sessions.filter(s => s.outcome !== 'active');
   const wins = completedSessions.filter(s => s.outcome === 'win').length;
@@ -59,83 +91,100 @@ export const BattlegroundHistory = ({ sessions }: BattlegroundHistoryProps) => {
     }
   };
 
+  const recentBattles = completedSessions.slice(-5).reverse();
+
   return (
-    <Card className="p-4">
-      <h3 className="text-lg font-semibold mb-4">📊 Battle Performance</h3>
+    <>
+      <BattlegroundReplay 
+        open={replayOpen}
+        onOpenChange={setReplayOpen}
+        session={selectedSession}
+      />
       
-      {/* Overall Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-green-500">{wins}</div>
-          <div className="text-xs text-muted-foreground">Wins</div>
+      <Card className="p-4">
+        <h3 className="text-lg font-semibold mb-4">📊 Battle Performance</h3>
+      
+        {/* Overall Stats */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-500">{wins}</div>
+            <div className="text-xs text-muted-foreground">Wins</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-red-500">{losses}</div>
+            <div className="text-xs text-muted-foreground">Losses</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold">{winRate.toFixed(0)}%</div>
+            <div className="text-xs text-muted-foreground">Win Rate</div>
+          </div>
         </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-red-500">{losses}</div>
-          <div className="text-xs text-muted-foreground">Losses</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold">{winRate.toFixed(0)}%</div>
-          <div className="text-xs text-muted-foreground">Win Rate</div>
-        </div>
-      </div>
 
-      {/* Status Pattern Success Rates */}
-      <div className="space-y-3 mb-4">
-        <div className="text-sm font-semibold mb-2">Status Pattern Success Rates</div>
-        
-        {(Object.keys(statusPatterns) as Array<keyof typeof statusPatterns>).map(status => {
-          const successRate = getSuccessRate(status);
-          const total = statusPatterns[status].total;
+        {/* Status Pattern Success Rates */}
+        <div className="space-y-3 mb-4">
+          <div className="text-sm font-semibold mb-2">Status Pattern Success Rates</div>
           
-          return (
-            <div key={status} className="space-y-1">
-              <div className="flex justify-between items-center text-xs">
-                <span className={`font-mono ${getStatusColor(status)}`}>{status}</span>
-                <span className="text-muted-foreground">
-                  {successRate.toFixed(0)}% ({statusPatterns[status].wins}/{total})
-                </span>
+          {(Object.keys(statusPatterns) as Array<keyof typeof statusPatterns>).map(status => {
+            const successRate = getSuccessRate(status);
+            const total = statusPatterns[status].total;
+            
+            return (
+              <div key={status} className="space-y-1">
+                <div className="flex justify-between items-center text-xs">
+                  <span className={`font-mono ${getStatusColor(status)}`}>{status}</span>
+                  <span className="text-muted-foreground">
+                    {successRate.toFixed(0)}% ({statusPatterns[status].wins}/{total})
+                  </span>
+                </div>
+                <Progress value={successRate} className="h-2" />
               </div>
-              <Progress value={successRate} className="h-2" />
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Recent Sessions */}
-      <div className="space-y-2">
-        <div className="text-sm font-semibold mb-2">Recent Battles</div>
-        <div className="space-y-2 max-h-48 overflow-y-auto">
-          {sessions.slice(-5).reverse().map(session => (
-            <div 
-              key={session.id} 
-              className="flex items-center justify-between p-2 rounded-md bg-muted/50 text-xs"
-            >
-              <div className="flex items-center gap-2">
-                {session.outcome === 'win' ? (
-                  <TrendingUp className="h-3 w-3 text-green-500" />
-                ) : session.outcome === 'loss' ? (
-                  <TrendingDown className="h-3 w-3 text-red-500" />
-                ) : (
-                  <Badge variant="outline" className="text-xs">Active</Badge>
-                )}
-                <span className="font-mono">${session.priceLevel.toFixed(2)}</span>
-                <span className={getStatusColor(session.finalStatus)}>
-                  {session.finalStatus}
-                </span>
-              </div>
-              <span className="text-muted-foreground">
-                {Math.floor(session.duration / 60)}:{(session.duration % 60).toString().padStart(2, '0')}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
-      </div>
 
-      {completedSessions.length === 0 && (
-        <div className="text-center text-sm text-muted-foreground py-4">
-          No completed battles yet. Engage Battleground Mode to start tracking!
+        {/* Recent Sessions */}
+        <div className="space-y-2">
+          <div className="text-sm font-semibold mb-2">Recent Battles</div>
+          {recentBattles.length > 0 ? (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {recentBattles.map((session) => (
+                <div 
+                  key={session.id}
+                  className="flex items-center justify-between p-2 rounded bg-muted/50 hover:bg-muted transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Badge variant={session.outcome === 'win' ? 'default' : 'destructive'}>
+                      {session.outcome === 'win' ? 'WIN' : 'LOSS'}
+                    </Badge>
+                    <span className="text-xs font-mono">
+                      {session.symbol} @ ${session.priceLevel.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-muted-foreground">
+                      {session.finalStatus} • {session.duration}s
+                    </div>
+                    {session.priceTicks && session.priceTicks.length > 0 && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleReplayClick(session)}
+                        className="h-6 px-2"
+                      >
+                        <Play className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-sm text-muted-foreground py-4">
+              No completed battles yet. Engage Battleground Mode to start tracking!
+            </div>
+          )}
         </div>
-      )}
-    </Card>
+      </Card>
+    </>
   );
 };

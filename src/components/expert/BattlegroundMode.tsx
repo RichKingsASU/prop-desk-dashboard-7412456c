@@ -8,6 +8,21 @@ import { Button } from "@/components/ui/button";
 import { BattlegroundHistory } from "./BattlegroundHistory";
 import { useToast } from "@/hooks/use-toast";
 
+type BattleStatus = "TESTING" | "DEFENDING" | "WEAKENING" | "BROKEN" | "HOLDING";
+
+interface PriceTick {
+  timestamp: number;
+  price: number;
+  status: BattleStatus;
+  conviction: number;
+}
+
+interface StatusChange {
+  timestamp: number;
+  fromStatus: BattleStatus;
+  toStatus: BattleStatus;
+}
+
 interface BattleSession {
   id: string;
   timestamp: Date;
@@ -17,6 +32,12 @@ interface BattleSession {
   finalStatus: string;
   statusSequence: string[];
   duration: number;
+  priceTicks?: PriceTick[];
+  statusChanges?: StatusChange[];
+  autoDetectionTrigger?: {
+    timestamp: number;
+    reason: string;
+  };
 }
 
 interface BattlegroundModeProps {
@@ -29,9 +50,7 @@ interface BattlegroundModeProps {
   onSessionComplete: (session: BattleSession) => void;
 }
 
-type BattleStatus = "TESTING" | "DEFENDING" | "WEAKENING" | "BROKEN" | "HOLDING";
-
-export const BattlegroundMode = ({ 
+export const BattlegroundMode = ({
   open, 
   onOpenChange, 
   symbol, 
@@ -54,6 +73,8 @@ export const BattlegroundMode = ({
   const [battleActive, setBattleActive] = useState(true);
   const [lowestPrice, setLowestPrice] = useState(initialPrice);
   const [highestPrice, setHighestPrice] = useState(initialPrice);
+  const [priceTicks, setPriceTicks] = useState<PriceTick[]>([]);
+  const [statusChanges, setStatusChanges] = useState<StatusChange[]>([]);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastStatusRef = useRef<BattleStatus>(status);
@@ -162,7 +183,20 @@ export const BattlegroundMode = ({
     // Track status changes
     if (lastStatusRef.current !== newStatus) {
       setStatusHistory(prev => [...prev, newStatus]);
+      setStatusChanges(prev => [...prev, {
+        timestamp: Date.now(),
+        fromStatus: lastStatusRef.current,
+        toStatus: newStatus
+      }]);
     }
+    
+    // Record price tick with status and conviction
+    setPriceTicks(prev => [...prev, {
+      timestamp: Date.now(),
+      price: currentPrice,
+      status: newStatus,
+      conviction: newConviction
+    }]);
     
     lastStatusRef.current = newStatus;
   }, [currentPrice, priceHistory, priceLevel, open, audioEnabled]);
@@ -182,7 +216,8 @@ export const BattlegroundMode = ({
     
     if (testedLevel && bouncedSignificantly && sustainedBounce && percentFromLevel > 0.3) {
       autoCompleteTriggeredRef.current = true;
-      setTimeout(() => handleBattleEnd('win'), 500);
+      const reason = `Price bounced ${percentFromLevel.toFixed(2)}% above level after testing it at $${lowestPrice.toFixed(2)}`;
+      setTimeout(() => handleBattleEnd('win', true, reason), 500);
       return;
     }
     
@@ -195,7 +230,8 @@ export const BattlegroundMode = ({
     
     if (brokeThroughLevel && continuedDrop && sustainedBreak && droppedFromHigh && percentFromLevel > 0.3) {
       autoCompleteTriggeredRef.current = true;
-      setTimeout(() => handleBattleEnd('loss'), 500);
+      const reason = `Price broke through and dropped ${percentFromLevel.toFixed(2)}% below level, continuing downward from high of $${highestPrice.toFixed(2)}`;
+      setTimeout(() => handleBattleEnd('loss', true, reason), 500);
       return;
     }
   }, [currentPrice, priceHistory, priceLevel, open, battleActive, lowestPrice, highestPrice]);
@@ -226,7 +262,7 @@ export const BattlegroundMode = ({
   const nextTargetUp = priceLevel + 1.89;
   const nextTargetDown = priceLevel - 1.06;
 
-  const handleBattleEnd = (outcome: 'win' | 'loss', isAutomatic = false) => {
+  const handleBattleEnd = (outcome: 'win' | 'loss', isAutomatic = false, autoReason?: string) => {
     if (!battleActive) return; // Prevent duplicate calls
     
     const duration = Math.floor((Date.now() - sessionStartTime) / 1000);
@@ -238,7 +274,13 @@ export const BattlegroundMode = ({
       outcome,
       finalStatus: status,
       statusSequence: [...new Set(statusHistory)],
-      duration
+      duration,
+      priceTicks,
+      statusChanges,
+      autoDetectionTrigger: isAutomatic && autoReason ? {
+        timestamp: Date.now(),
+        reason: autoReason
+      } : undefined
     };
     
     onSessionComplete(session);
