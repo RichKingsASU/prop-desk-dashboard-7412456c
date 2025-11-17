@@ -52,9 +52,12 @@ export const BattlegroundMode = ({
   const [sessionStartTime] = useState(Date.now());
   const [statusHistory, setStatusHistory] = useState<BattleStatus[]>([]);
   const [battleActive, setBattleActive] = useState(true);
+  const [lowestPrice, setLowestPrice] = useState(initialPrice);
+  const [highestPrice, setHighestPrice] = useState(initialPrice);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastStatusRef = useRef<BattleStatus>(status);
+  const autoCompleteTriggeredRef = useRef(false);
 
   // Initialize audio
   useEffect(() => {
@@ -71,6 +74,10 @@ export const BattlegroundMode = ({
         const trend = Math.random() > 0.5 ? 1 : -1;
         const change = (Math.random() * volatility) * trend;
         const newPrice = prev + change;
+        
+        // Track highest and lowest prices
+        setHighestPrice(h => Math.max(h, newPrice));
+        setLowestPrice(l => Math.min(l, newPrice));
         
         setPriceHistory(hist => [...hist.slice(-120), newPrice]);
         return newPrice;
@@ -160,6 +167,39 @@ export const BattlegroundMode = ({
     lastStatusRef.current = newStatus;
   }, [currentPrice, priceHistory, priceLevel, open, audioEnabled]);
 
+  // Automatic outcome detection
+  useEffect(() => {
+    if (!open || !battleActive || autoCompleteTriggeredRef.current) return;
+
+    const distanceToLevel = currentPrice - priceLevel;
+    const percentFromLevel = (Math.abs(distanceToLevel) / priceLevel) * 100;
+    
+    // Win condition: Price bounced significantly above the level
+    // Must have tested the level (gotten close) and then bounced back up
+    const testedLevel = lowestPrice <= priceLevel + 0.2; // Got within $0.20 of level
+    const bouncedSignificantly = currentPrice > priceLevel + (priceLevel * 0.003); // 0.3% above level
+    const sustainedBounce = priceHistory.slice(-5).every(p => p > priceLevel); // Last 5 ticks above level
+    
+    if (testedLevel && bouncedSignificantly && sustainedBounce && percentFromLevel > 0.3) {
+      autoCompleteTriggeredRef.current = true;
+      setTimeout(() => handleBattleEnd('win'), 500);
+      return;
+    }
+    
+    // Loss condition: Price broke through and continued downward
+    // Must have broken below the level and continued dropping
+    const brokeThroughLevel = currentPrice < priceLevel - 0.1; // Below level by $0.10
+    const continuedDrop = currentPrice < priceLevel - (priceLevel * 0.003); // 0.3% below level
+    const sustainedBreak = priceHistory.slice(-5).every(p => p < priceLevel - 0.05); // Last 5 ticks below
+    const droppedFromHigh = highestPrice > priceLevel; // Was above at some point
+    
+    if (brokeThroughLevel && continuedDrop && sustainedBreak && droppedFromHigh && percentFromLevel > 0.3) {
+      autoCompleteTriggeredRef.current = true;
+      setTimeout(() => handleBattleEnd('loss'), 500);
+      return;
+    }
+  }, [currentPrice, priceHistory, priceLevel, open, battleActive, lowestPrice, highestPrice]);
+
   const getStatusColor = (s: BattleStatus) => {
     switch (s) {
       case "TESTING": return "bg-yellow-500";
@@ -186,7 +226,9 @@ export const BattlegroundMode = ({
   const nextTargetUp = priceLevel + 1.89;
   const nextTargetDown = priceLevel - 1.06;
 
-  const handleBattleEnd = (outcome: 'win' | 'loss') => {
+  const handleBattleEnd = (outcome: 'win' | 'loss', isAutomatic = false) => {
+    if (!battleActive) return; // Prevent duplicate calls
+    
     const duration = Math.floor((Date.now() - sessionStartTime) / 1000);
     const session: BattleSession = {
       id: sessionId,
@@ -203,7 +245,9 @@ export const BattlegroundMode = ({
     setBattleActive(false);
     
     toast({
-      title: outcome === 'win' ? '🎯 Battle Won!' : '💥 Battle Lost',
+      title: outcome === 'win' 
+        ? `🎯 Battle Won!${isAutomatic ? ' (Auto-detected)' : ''}` 
+        : `💥 Battle Lost${isAutomatic ? ' (Auto-detected)' : ''}`,
       description: `${symbol} @ $${priceLevel.toFixed(2)} - Final status: ${status}`,
       variant: outcome === 'win' ? 'default' : 'destructive'
     });
@@ -230,28 +274,38 @@ export const BattlegroundMode = ({
         <div className="flex-1 space-y-4 overflow-y-auto">
           {/* Battle Outcome Buttons */}
           {battleActive && (
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                onClick={() => handleBattleEnd('win')}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Mark Win
-              </Button>
-              <Button
-                onClick={() => handleBattleEnd('loss')}
-                variant="destructive"
-              >
-                <XCircle className="h-4 w-4 mr-2" />
-                Mark Loss
-              </Button>
-            </div>
+            <Card className="p-3 bg-muted/50">
+              <div className="text-xs text-muted-foreground mb-2 text-center">
+                Auto-detection active | Manual override:
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  onClick={() => handleBattleEnd('win', false)}
+                  className="bg-green-600 hover:bg-green-700"
+                  size="sm"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Mark Win
+                </Button>
+                <Button
+                  onClick={() => handleBattleEnd('loss', false)}
+                  variant="destructive"
+                  size="sm"
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Mark Loss
+                </Button>
+              </div>
+            </Card>
           )}
 
           {!battleActive && (
-            <Card className="p-4 bg-muted">
-              <div className="text-center text-sm">
-                Battle concluded. Review statistics below.
+            <Card className="p-4 bg-green-500/20 border-green-500/50">
+              <div className="text-center">
+                <div className="text-lg font-semibold mb-1">✅ Battle Concluded</div>
+                <div className="text-sm text-muted-foreground">
+                  Review performance statistics below
+                </div>
               </div>
             </Card>
           )}
