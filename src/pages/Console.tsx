@@ -17,7 +17,9 @@ import { PerformanceKpi } from "@/components/expert/PerformanceKpi";
 import { PerformanceChart } from "@/components/expert/PerformanceChart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRealtimePrice } from "@/hooks/useRealtimePrice";
+import { useTrailingStopAutomation } from "@/hooks/useTrailingStopAutomation";
 import { useToast } from "@/hooks/use-toast";
+import { StopLossConfig } from "@/utils/stopCalculations";
 
 const Console = () => {
   const { symbol } = useParams<{ symbol: string }>();
@@ -26,6 +28,12 @@ const Console = () => {
   const [levelsData, setLevelsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [trailingStopEnabled, setTrailingStopEnabled] = useState(false);
+  const [stopConfig, setStopConfig] = useState<StopLossConfig>({
+    type: 'trailing',
+    trailingDistance: 1.5,
+    trailingUnit: 'atr',
+  });
 
   // Handle real-time price updates
   const handlePriceUpdate = useCallback((update: any) => {
@@ -44,6 +52,23 @@ const Console = () => {
 
   // WebSocket connection for real-time prices
   const { connected } = useRealtimePrice(symbol || "SPY", handlePriceUpdate);
+
+  // Mock position for trailing stop automation
+  const mockPosition = {
+    symbol: symbol || "SPY",
+    side: 'long' as const,
+    entryPrice: 430.50,
+    currentPrice: snapshotData?.last_price || 432.15,
+    quantity: 100,
+  };
+
+  // Trailing stop automation
+  const { currentStopLevel, distance } = useTrailingStopAutomation({
+    position: mockPosition,
+    config: stopConfig,
+    enabled: trailingStopEnabled,
+    atrValue: snapshotData?.atr_14,
+  });
 
   useEffect(() => {
     // Mock data fetching - replace with actual API calls
@@ -261,16 +286,46 @@ const Console = () => {
             
             {/* Trailing Stop Control */}
             <TrailingStopControl 
-              position={{
-                symbol: symbol || "SPY",
-                side: "long",
-                entryPrice: 430.50,
-                currentPrice: snapshotData?.last_price || 432.15,
-                quantity: 100,
-              }}
+              position={mockPosition}
               atrValue={snapshotData?.atr_14}
-              onApply={(config) => console.log("Stop config applied:", config)}
+              onApply={(config) => {
+                setStopConfig(config);
+                setTrailingStopEnabled(true);
+              }}
             />
+            
+            {trailingStopEnabled && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold">Live Stop Monitor</CardTitle>
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                      Active
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Current Stop:</span>
+                    <span className="font-mono font-semibold text-foreground">
+                      ${currentStopLevel.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Distance:</span>
+                    <span className="font-mono text-foreground">
+                      {distance.percent.toFixed(2)}% / {distance.atr?.toFixed(2)} ATR
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Risk ($):</span>
+                    <span className="font-mono text-foreground">
+                      ${distance.dollars.toFixed(2)}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             
             <MicroNotes 
               defaultSymbol={symbol || "SPY"} 
