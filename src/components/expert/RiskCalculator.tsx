@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Calculator, DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -128,7 +128,18 @@ export function RiskCalculator({
     }
   };
 
-  const results = calculateRisk();
+  const results = useMemo(() => calculateRisk(), [
+    accountEquity,
+    riskPercent,
+    stopDistanceATR,
+    entryPrice,
+    currentPrice,
+    atrValue,
+    isOptionMode,
+    optionPremium,
+    selectedOption?.strike,
+    selectedOption?.type,
+  ]);
 
   // Notify parent of calculation results
   useEffect(() => {
@@ -139,7 +150,7 @@ export function RiskCalculator({
         dollarRisk: results.dollarRisk,
       });
     }
-  }, [results.valid, results.positionSize, results.positionValue, results.dollarRisk, onCalculate]);
+  }, [results, onCalculate]);
 
   if (loading) {
     return (
