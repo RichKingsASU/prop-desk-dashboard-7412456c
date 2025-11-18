@@ -76,7 +76,13 @@ const loadThresholds = (): DetectionThresholds => {
   const stored = localStorage.getItem('battleground-thresholds');
   if (stored) {
     try {
-      return { ...DEFAULT_THRESHOLDS, ...JSON.parse(stored) };
+      const parsed = JSON.parse(stored);
+      return {
+        bouncePercent: Number(parsed.bouncePercent) || DEFAULT_THRESHOLDS.bouncePercent,
+        breakPercent: Number(parsed.breakPercent) || DEFAULT_THRESHOLDS.breakPercent,
+        sustainedTickCount: Number(parsed.sustainedTickCount) || DEFAULT_THRESHOLDS.sustainedTickCount,
+        testDistance: Number(parsed.testDistance) || DEFAULT_THRESHOLDS.testDistance,
+      };
     } catch {
       return DEFAULT_THRESHOLDS;
     }
