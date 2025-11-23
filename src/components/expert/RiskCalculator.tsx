@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Calculator, DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, AlertCircle, Plus, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { z } from 'zod';
 
 interface RiskCalculatorProps {
@@ -22,12 +24,20 @@ interface RiskCalculatorProps {
   onCalculate?: (results: { positionSize: number; positionValue: number; dollarRisk: number }) => void;
 }
 
+interface CustomRiskProfile {
+  id: string;
+  name: string;
+  riskPercent: number;
+}
+
 const calculatorSchema = z.object({
   accountEquity: z.number().positive({ message: "Account equity must be positive" }).max(100000000, { message: "Value too large" }),
   riskPercent: z.number().min(0.1, { message: "Min 0.1%" }).max(10, { message: "Max 10%" }),
   stopDistanceATR: z.number().min(0.1, { message: "Min 0.1 ATR" }).max(10, { message: "Max 10 ATR" }),
   entryPrice: z.number().positive({ message: "Entry price must be positive" }),
 });
+
+const STORAGE_KEY = 'risk-calculator-custom-profiles';
 
 export function RiskCalculator({ 
   symbol = "SPY",
@@ -42,6 +52,53 @@ export function RiskCalculator({
   const [stopDistanceATR, setStopDistanceATR] = useState<number>(1.5);
   const [entryPrice, setEntryPrice] = useState<string>(currentPrice.toString());
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [customProfiles, setCustomProfiles] = useState<CustomRiskProfile[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [newProfileName, setNewProfileName] = useState("");
+  const [newProfileRisk, setNewProfileRisk] = useState("");
+
+  // Load custom profiles from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const profiles = JSON.parse(saved);
+        setCustomProfiles(profiles);
+      } catch (e) {
+        console.error('Failed to load custom profiles:', e);
+      }
+    }
+  }, []);
+
+  // Save custom profiles to localStorage
+  const saveProfilesToStorage = (profiles: CustomRiskProfile[]) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
+    setCustomProfiles(profiles);
+  };
+
+  const addCustomProfile = () => {
+    const risk = parseFloat(newProfileRisk);
+    if (!newProfileName.trim() || isNaN(risk) || risk < 0.1 || risk > 10) {
+      return;
+    }
+
+    const newProfile: CustomRiskProfile = {
+      id: Date.now().toString(),
+      name: newProfileName.trim(),
+      riskPercent: risk,
+    };
+
+    const updatedProfiles = [...customProfiles, newProfile];
+    saveProfilesToStorage(updatedProfiles);
+    setNewProfileName("");
+    setNewProfileRisk("");
+    setDialogOpen(false);
+  };
+
+  const deleteCustomProfile = (id: string) => {
+    const updatedProfiles = customProfiles.filter(p => p.id !== id);
+    saveProfilesToStorage(updatedProfiles);
+  };
 
   // Determine if we're calculating for options or stock
   const isOptionMode = selectedOption !== null;
@@ -247,40 +304,120 @@ export function RiskCalculator({
           </div>
           
           {/* Preset Risk Profiles */}
-          <div className="grid grid-cols-3 gap-2 mb-2">
-            <button
-              onClick={() => setRiskPercent(0.5)}
-              className={`px-3 py-2 text-xs font-medium rounded-md border transition-colors ${
-                riskPercent === 0.5
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-background text-foreground border-border hover:bg-muted'
-              }`}
-            >
-              Conservative
-              <div className="text-[10px] opacity-70">0.5%</div>
-            </button>
-            <button
-              onClick={() => setRiskPercent(1.0)}
-              className={`px-3 py-2 text-xs font-medium rounded-md border transition-colors ${
-                riskPercent === 1.0
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-background text-foreground border-border hover:bg-muted'
-              }`}
-            >
-              Moderate
-              <div className="text-[10px] opacity-70">1.0%</div>
-            </button>
-            <button
-              onClick={() => setRiskPercent(2.0)}
-              className={`px-3 py-2 text-xs font-medium rounded-md border transition-colors ${
-                riskPercent === 2.0
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-background text-foreground border-border hover:bg-muted'
-              }`}
-            >
-              Aggressive
-              <div className="text-[10px] opacity-70">2.0%</div>
-            </button>
+          <div className="space-y-2 mb-2">
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => setRiskPercent(0.5)}
+                className={`px-3 py-2 text-xs font-medium rounded-md border transition-colors ${
+                  riskPercent === 0.5
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background text-foreground border-border hover:bg-muted'
+                }`}
+              >
+                Conservative
+                <div className="text-[10px] opacity-70">0.5%</div>
+              </button>
+              <button
+                onClick={() => setRiskPercent(1.0)}
+                className={`px-3 py-2 text-xs font-medium rounded-md border transition-colors ${
+                  riskPercent === 1.0
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background text-foreground border-border hover:bg-muted'
+                }`}
+              >
+                Moderate
+                <div className="text-[10px] opacity-70">1.0%</div>
+              </button>
+              <button
+                onClick={() => setRiskPercent(2.0)}
+                className={`px-3 py-2 text-xs font-medium rounded-md border transition-colors ${
+                  riskPercent === 2.0
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background text-foreground border-border hover:bg-muted'
+                }`}
+              >
+                Aggressive
+                <div className="text-[10px] opacity-70">2.0%</div>
+              </button>
+            </div>
+
+            {/* Custom Profiles */}
+            {customProfiles.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {customProfiles.map((profile) => (
+                  <button
+                    key={profile.id}
+                    onClick={() => setRiskPercent(profile.riskPercent)}
+                    className={`relative px-3 py-2 text-xs font-medium rounded-md border transition-colors ${
+                      riskPercent === profile.riskPercent
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background text-foreground border-border hover:bg-muted'
+                    }`}
+                  >
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteCustomProfile(profile.id);
+                      }}
+                      className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/80"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                    {profile.name}
+                    <div className="text-[10px] opacity-70">{profile.riskPercent}%</div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Add Custom Profile Button */}
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="w-full text-xs">
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add Custom Profile
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Create Custom Risk Profile</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="profileName">Profile Name</Label>
+                    <Input
+                      id="profileName"
+                      placeholder="e.g., Scalping"
+                      value={newProfileName}
+                      onChange={(e) => setNewProfileName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="profileRisk">Risk Percentage (%)</Label>
+                    <Input
+                      id="profileRisk"
+                      type="number"
+                      placeholder="e.g., 1.5"
+                      min="0.1"
+                      max="10"
+                      step="0.1"
+                      value={newProfileRisk}
+                      onChange={(e) => setNewProfileRisk(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Enter a value between 0.1% and 10%
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={addCustomProfile}
+                    disabled={!newProfileName.trim() || !newProfileRisk}
+                    className="w-full"
+                  >
+                    Create Profile
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
           
           <Slider
