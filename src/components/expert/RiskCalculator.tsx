@@ -245,6 +245,44 @@ export function RiskCalculator({
               {riskPercent.toFixed(1)}%
             </span>
           </div>
+          
+          {/* Preset Risk Profiles */}
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            <button
+              onClick={() => setRiskPercent(0.5)}
+              className={`px-3 py-2 text-xs font-medium rounded-md border transition-colors ${
+                riskPercent === 0.5
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background text-foreground border-border hover:bg-muted'
+              }`}
+            >
+              Conservative
+              <div className="text-[10px] opacity-70">0.5%</div>
+            </button>
+            <button
+              onClick={() => setRiskPercent(1.0)}
+              className={`px-3 py-2 text-xs font-medium rounded-md border transition-colors ${
+                riskPercent === 1.0
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background text-foreground border-border hover:bg-muted'
+              }`}
+            >
+              Moderate
+              <div className="text-[10px] opacity-70">1.0%</div>
+            </button>
+            <button
+              onClick={() => setRiskPercent(2.0)}
+              className={`px-3 py-2 text-xs font-medium rounded-md border transition-colors ${
+                riskPercent === 2.0
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background text-foreground border-border hover:bg-muted'
+              }`}
+            >
+              Aggressive
+              <div className="text-[10px] opacity-70">2.0%</div>
+            </button>
+          </div>
+          
           <Slider
             id="riskPercent"
             value={[riskPercent]}
