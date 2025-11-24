@@ -84,7 +84,7 @@ export const LayoutControls = () => {
             <span className="text-xs">Layout</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuContent align="end" className="w-64 z-[200]">
           <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wide">
             Widget Store
           </DropdownMenuLabel>
