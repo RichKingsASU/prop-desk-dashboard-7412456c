@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Calculator, DollarSign, TrendingUp, AlertCircle, Plus, X } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, AlertCircle, Plus, X, Target } from 'lucide-react';
+import { calculateRiskReward } from '@/utils/stopCalculations';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -56,6 +57,7 @@ export function RiskCalculator({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newProfileName, setNewProfileName] = useState("");
   const [newProfileRisk, setNewProfileRisk] = useState("");
+  const [targetPrice, setTargetPrice] = useState<string>("");
 
   // Load custom profiles from localStorage on mount
   useEffect(() => {
@@ -197,6 +199,31 @@ export function RiskCalculator({
     selectedOption?.strike,
     selectedOption?.type,
   ]);
+
+  // Calculate Risk:Reward metrics
+  const rrMetrics = useMemo(() => {
+    const entry = parseFloat(entryPrice) || currentPrice;
+    const target = parseFloat(targetPrice);
+    
+    if (!target || target <= 0 || !results.valid) {
+      return null;
+    }
+
+    const stopPrice = results.stopLossPrice;
+    const rrRatio = calculateRiskReward(entry, stopPrice, target);
+    
+    const potentialProfit = results.positionSize * Math.abs(target - entry);
+    const potentialProfitPercent = (potentialProfit / parseFloat(accountEquity)) * 100;
+    
+    return {
+      rrRatio,
+      rewardAmount: Math.abs(target - entry),
+      riskAmount: Math.abs(entry - stopPrice),
+      potentialProfit,
+      potentialProfitPercent,
+      isValidTarget: isOptionMode ? target > entry : (target > entry || target < entry), // Allow both long and short
+    };
+  }, [targetPrice, entryPrice, currentPrice, results, accountEquity, isOptionMode]);
 
   // Notify parent of calculation results
   useEffect(() => {
@@ -570,6 +597,120 @@ export function RiskCalculator({
             )}
           </div>
         )}
+
+        {/* Risk:Reward Calculator */}
+        <div className="space-y-3 pt-4 border-t border-border">
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold">Risk:Reward Calculator</h3>
+          </div>
+
+          {/* Target Price Input */}
+          <div className="space-y-2">
+            <Label htmlFor="targetPrice" className="text-xs text-muted-foreground">
+              Target Price ($)
+            </Label>
+            <div className="relative">
+              <Target className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="targetPrice"
+                type="number"
+                value={targetPrice}
+                onChange={(e) => setTargetPrice(e.target.value)}
+                className="pl-9"
+                placeholder="Enter target price"
+                step="0.01"
+              />
+            </div>
+          </div>
+
+          {/* R:R Results */}
+          {rrMetrics && rrMetrics.isValidTarget && (
+            <div className="space-y-3">
+              {/* R:R Ratio Display */}
+              <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">Risk:Reward Ratio</span>
+                  <Badge 
+                    variant={rrMetrics.rrRatio >= 2 ? "default" : rrMetrics.rrRatio >= 1 ? "secondary" : "destructive"}
+                    className="font-mono"
+                  >
+                    1:{rrMetrics.rrRatio.toFixed(2)}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Risk</p>
+                    <p className="font-mono font-semibold text-destructive">
+                      ${rrMetrics.riskAmount.toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Reward</p>
+                    <p className="font-mono font-semibold text-primary">
+                      ${rrMetrics.rewardAmount.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Potential Profit Display */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1 p-3 bg-primary/5 rounded-lg border border-primary/10">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                    Potential Profit
+                  </p>
+                  <p className="text-base font-bold font-mono text-primary">
+                    ${rrMetrics.potentialProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+                
+                <div className="space-y-1 p-3 bg-primary/5 rounded-lg border border-primary/10">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                    % of Account
+                  </p>
+                  <p className="text-base font-bold font-mono text-primary">
+                    +{rrMetrics.potentialProfitPercent.toFixed(2)}%
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick Analysis */}
+              <div className="text-xs text-muted-foreground p-3 bg-muted/30 rounded-lg">
+                {rrMetrics.rrRatio >= 3 && (
+                  <p className="flex items-center gap-1 text-primary">
+                    <TrendingUp className="h-3 w-3" />
+                    Excellent risk:reward ratio - strong trade setup
+                  </p>
+                )}
+                {rrMetrics.rrRatio >= 2 && rrMetrics.rrRatio < 3 && (
+                  <p className="flex items-center gap-1 text-primary">
+                    <TrendingUp className="h-3 w-3" />
+                    Good risk:reward ratio - favorable trade
+                  </p>
+                )}
+                {rrMetrics.rrRatio >= 1 && rrMetrics.rrRatio < 2 && (
+                  <p className="flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    Acceptable risk:reward - consider trade context
+                  </p>
+                )}
+                {rrMetrics.rrRatio < 1 && (
+                  <p className="flex items-center gap-1 text-destructive">
+                    <AlertCircle className="h-3 w-3" />
+                    Poor risk:reward - risk exceeds potential reward
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!rrMetrics && targetPrice && (
+            <p className="text-xs text-muted-foreground italic text-center py-2">
+              Enter a valid target price to see R:R analysis
+            </p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
