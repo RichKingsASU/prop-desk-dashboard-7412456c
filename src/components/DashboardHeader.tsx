@@ -1,7 +1,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Sun, Moon } from "lucide-react";
+import { Clock, Sun, Moon, Columns2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { LayoutControls } from "@/components/LayoutControls";
@@ -13,6 +13,10 @@ interface DashboardHeaderProps {
   equity: number;
   dayPnl: number;
   dayPnlPct: number;
+  splitMode?: boolean;
+  onSplitModeToggle?: () => void;
+  secondSymbol?: string;
+  onSecondSymbolChange?: (symbol: string) => void;
 }
 
 const SYMBOLS = ["SPY", "QQQ", "IWM", "AAPL", "TSLA", "NVDA", "MSFT", "AMD"];
@@ -24,6 +28,10 @@ export const DashboardHeader = ({
   equity,
   dayPnl,
   dayPnlPct,
+  splitMode = false,
+  onSplitModeToggle,
+  secondSymbol = "QQQ",
+  onSecondSymbolChange,
 }: DashboardHeaderProps) => {
   const { theme, toggleTheme } = useTheme();
   const [timeToClose, setTimeToClose] = useState("");
@@ -92,8 +100,22 @@ export const DashboardHeader = ({
           </Button>
         </div>
 
-        {/* Center Section: Symbol Selector */}
-        <div className="flex items-center justify-center flex-1">
+        {/* Center Section: Symbol Selector(s) + Split Mode Toggle */}
+        <div className="flex items-center justify-center flex-1 gap-3">
+          {/* Split Mode Toggle */}
+          {onSplitModeToggle && (
+            <Button
+              variant={splitMode ? "default" : "outline"}
+              size="icon"
+              onClick={onSplitModeToggle}
+              className="h-10 w-10 shrink-0"
+              title="Toggle split-screen mode"
+            >
+              <Columns2 className="h-4 w-4" />
+            </Button>
+          )}
+          
+          {/* Primary Symbol Selector */}
           <Select value={currentSymbol} onValueChange={onSymbolChange}>
             <SelectTrigger className="w-40 h-10 border-2 border-border hover:border-primary/50 transition-colors font-semibold text-base bg-card">
               <SelectValue />
@@ -110,6 +132,29 @@ export const DashboardHeader = ({
               ))}
             </SelectContent>
           </Select>
+          
+          {/* Second Symbol Selector (Split Mode) */}
+          {splitMode && onSecondSymbolChange && (
+            <>
+              <span className="text-muted-foreground font-bold">vs</span>
+              <Select value={secondSymbol} onValueChange={onSecondSymbolChange}>
+                <SelectTrigger className="w-40 h-10 border-2 border-border hover:border-primary/50 transition-colors font-semibold text-base bg-card">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border z-[100]">
+                  {SYMBOLS.map((symbol) => (
+                    <SelectItem 
+                      key={symbol} 
+                      value={symbol}
+                      className="font-medium hover:bg-accent/50 cursor-pointer"
+                    >
+                      {symbol}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
         </div>
 
         {/* Right Section: Layout Controls + Account Summary + Market Time */}

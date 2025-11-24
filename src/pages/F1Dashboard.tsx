@@ -9,6 +9,8 @@ import { useLayout } from "@/contexts/LayoutContext";
 
 const F1Dashboard = () => {
   const [currentSymbol, setCurrentSymbol] = useState("SPY");
+  const [secondSymbol, setSecondSymbol] = useState("QQQ");
+  const [splitMode, setSplitMode] = useState(false);
   const { layout } = useLayout();
 
   // Mock data
@@ -27,6 +29,15 @@ const F1Dashboard = () => {
     changePct: 0.29,
     openPnL: 165.00,
     positionSize: 10,
+  };
+
+  const secondChartData = {
+    symbol: secondSymbol,
+    currentPrice: 389.50,
+    change: -0.85,
+    changePct: -0.22,
+    openPnL: -45.00,
+    positionSize: 5,
   };
 
   // Dynamic grid layout based on visible components
@@ -63,6 +74,10 @@ const F1Dashboard = () => {
         equity={accountData.equity}
         dayPnl={accountData.dayPnl}
         dayPnlPct={accountData.dayPnlPct}
+        splitMode={splitMode}
+        onSplitModeToggle={() => setSplitMode(!splitMode)}
+        secondSymbol={secondSymbol}
+        onSecondSymbolChange={setSecondSymbol}
       />
 
       {/* Main Grid Layout */}
@@ -77,7 +92,14 @@ const F1Dashboard = () => {
         {/* Center - Telemetry Chart (dynamic cols) */}
         {layout.showTelemetry && (
           <div className={`${telemetryColSpan} animate-fade-in transition-all duration-300`}>
-            <TelemetryChart {...chartData} />
+            {splitMode ? (
+              <div className="grid grid-cols-2 gap-4 h-full">
+                <TelemetryChart {...chartData} />
+                <TelemetryChart {...secondChartData} />
+              </div>
+            ) : (
+              <TelemetryChart {...chartData} />
+            )}
           </div>
         )}
 
