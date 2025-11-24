@@ -72,7 +72,7 @@ export const TelemetryChart = ({
 
       {/* Chart Container */}
       <div className="h-full">
-        <TradingViewChart symbol={symbol} />
+        <TradingViewChart symbol={symbol} showCard={false} />
       </div>
     </Card>
   );
