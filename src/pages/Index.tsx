@@ -142,8 +142,8 @@ const Index = () => {
         {/* Top Row - Market Overview + Console Button */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Market Overview</h2>
-            <Button onClick={handleOpenConsole} size="sm" variant="outline">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide ui-label">Market Overview</h2>
+            <Button onClick={handleOpenConsole} size="sm" variant="outline" className="border-white/10">
               <Target className="h-4 w-4 mr-2" />
               Open Decision Console
             </Button>
@@ -181,22 +181,22 @@ const Index = () => {
           {/* Command & Status Column - 1/3 width */}
           <div className="space-y-4">
             <div>
-              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Account & Risk</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider ui-label">Account & Risk</h3>
               <AccountPanel data={accountData} loading={false} />
             </div>
 
             <div>
-              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Options Positions</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider ui-label">Options Positions</h3>
               <OptionsPositionsTable />
             </div>
             
             <div>
-              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Bot Status</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider ui-label">Bot Status</h3>
               <BotStatusPanel data={botStatus} loading={false} />
             </div>
             
             <div>
-              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Master Controls</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider ui-label">Master Controls</h3>
               <MasterControlPanel
                 controls={botControls}
                 onControlChange={handleControlChange}
@@ -205,14 +205,14 @@ const Index = () => {
             </div>
 
             <div>
-              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Options Order Ticket</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider ui-label">Options Order Ticket</h3>
               <OptionsOrderTicket defaultSymbol={currentSymbol} />
             </div>
 
             {/* Collapsible News Panel */}
             <Collapsible open={newsPanelOpen} onOpenChange={setNewsPanelOpen}>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">News & Alerts</h3>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ui-label">News & Alerts</h3>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
                     {newsPanelOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -227,7 +227,7 @@ const Index = () => {
             {/* Collapsible Notes Panel */}
             <Collapsible open={notesPanelOpen} onOpenChange={setNotesPanelOpen}>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Trader Notes</h3>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ui-label">Trader Notes</h3>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
                     {notesPanelOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -243,7 +243,7 @@ const Index = () => {
 
         {/* Bottom - Trade History */}
         <div>
-          <h3 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">Trade History</h3>
+          <h3 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide ui-label">Trade History</h3>
           <TradeHistoryTable />
         </div>
       </div>

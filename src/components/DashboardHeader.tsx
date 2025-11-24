@@ -1,7 +1,9 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Clock, Sun, Moon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface DashboardHeaderProps {
   currentSymbol: string;
@@ -22,6 +24,7 @@ export const DashboardHeader = ({
   dayPnl,
   dayPnlPct,
 }: DashboardHeaderProps) => {
+  const { theme, toggleTheme } = useTheme();
   const [timeToClose, setTimeToClose] = useState("");
   const [marketStatus, setMarketStatus] = useState<"open" | "closed">("open");
 
@@ -57,11 +60,11 @@ export const DashboardHeader = ({
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90 shadow-sm">
+    <header className="sticky top-0 z-50 w-full border-b border-white/10 backdrop-blur-md bg-card/80 shadow-lg">
       <div className="flex h-16 items-center justify-between px-6 gap-8">
         {/* Left Section: Title + Environment Badge */}
         <div className="flex items-center gap-3 min-w-fit">
-          <h1 className="text-lg font-bold tracking-tight">Pro Day Trading Dashboard</h1>
+          <h1 className="text-lg font-bold tracking-tight ui-label">Pro Day Trading Dashboard</h1>
           <Badge
             className={
               environment === "production"
@@ -71,6 +74,21 @@ export const DashboardHeader = ({
           >
             {environment.toUpperCase()}
           </Badge>
+          
+          {/* Theme Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="ml-2 h-9 w-9 rounded-full border border-white/10 hover:bg-accent/10"
+            title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          >
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4 text-yellow-500" />
+            ) : (
+              <Moon className="h-4 w-4 text-blue-600" />
+            )}
+          </Button>
         </div>
 
         {/* Center Section: Symbol Selector */}
@@ -96,36 +114,36 @@ export const DashboardHeader = ({
         {/* Right Section: Account Summary + Market Time */}
         <div className="flex items-center gap-6 min-w-fit">
           <div className="text-right">
-            <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Equity</div>
+            <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide ui-label">Equity</div>
             <div className="number-mono text-base font-bold text-foreground">
               ${equity.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
           
-          <div className="h-8 w-px bg-border" />
+          <div className="h-8 w-px bg-white/10" />
           
           <div className="text-right">
-            <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Day P/L</div>
-            <div className={`number-mono text-base font-bold ${dayPnl >= 0 ? "bull-text" : "bear-text"}`}>
+            <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide ui-label">Day P/L</div>
+            <div className={`number-mono text-xl font-extrabold ${dayPnl >= 0 ? "bull-text" : "bear-text"}`}>
               {dayPnl >= 0 ? "+" : ""}${Math.abs(dayPnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              <span className="ml-1.5 text-sm">({dayPnlPct >= 0 ? "+" : ""}{dayPnlPct.toFixed(2)}%)</span>
+              <span className="ml-1.5 text-base font-bold">({dayPnlPct >= 0 ? "+" : ""}{dayPnlPct.toFixed(2)}%)</span>
             </div>
           </div>
           
-          <div className="h-8 w-px bg-border" />
+          <div className="h-8 w-px bg-white/10" />
           
           <div className="flex flex-col gap-1">
             <Badge
               variant={marketStatus === "open" ? "default" : "secondary"}
-              className={`text-xs font-semibold px-2.5 py-1 ${
+              className={`text-xs font-semibold px-2.5 py-1 ui-label ${
                 marketStatus === "open" 
                   ? "bg-bull/20 text-bull border border-bull/30" 
-                  : "bg-muted text-muted-foreground border border-border"
+                  : "bg-muted text-muted-foreground border border-white/10"
               }`}
             >
               {marketStatus === "open" ? "● MARKET OPEN" : "○ MARKET CLOSED"}
             </Badge>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground ui-label">
               <Clock className="h-3.5 w-3.5" />
               <span className="number-mono font-medium">{timeToClose}</span>
             </div>
