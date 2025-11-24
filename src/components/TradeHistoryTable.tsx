@@ -290,8 +290,8 @@ export function TradeHistoryTable({ trades, loading = false }: TradeHistoryTable
                   asChild
                 >
                   <>
-                    <TableRow className="cursor-pointer hover:bg-muted/50">
-                      <TableCell>
+                     <TableRow className="cursor-pointer hover:bg-muted/50">
+                      <TableCell className="py-4">
                         <CollapsibleTrigger asChild>
                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
                             {expandedTradeId === trade.id ? (
@@ -302,7 +302,7 @@ export function TradeHistoryTable({ trades, loading = false }: TradeHistoryTable
                           </Button>
                         </CollapsibleTrigger>
                       </TableCell>
-                      <TableCell className="text-xs">
+                      <TableCell className="text-xs py-4">
                         {new Date(trade.timestamp).toLocaleString("en-US", {
                           month: "short",
                           day: "numeric",
@@ -310,13 +310,17 @@ export function TradeHistoryTable({ trades, loading = false }: TradeHistoryTable
                           minute: "2-digit",
                         })}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-4">
                         <span className="font-semibold">{trade.symbol}</span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-4">
                         <Badge
-                          variant={trade.side === "long" ? "default" : "secondary"}
-                          className="uppercase text-xs"
+                          className={cn(
+                            "uppercase text-xs font-semibold rounded-full px-3 py-1",
+                            trade.side === "long" 
+                              ? "bg-bull/20 text-bull border-bull/30 hover:bg-bull/30" 
+                              : "bg-bear/20 text-bear border-bear/30 hover:bg-bear/30"
+                          )}
                         >
                           {trade.side === "long" ? (
                             <TrendingUp className="h-3 w-3 mr-1" />
@@ -326,27 +330,27 @@ export function TradeHistoryTable({ trades, loading = false }: TradeHistoryTable
                           {trade.side}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-mono text-xs">
+                      <TableCell className="font-mono text-xs py-4">
                         ${trade.entry_price.toFixed(2)}
                       </TableCell>
-                      <TableCell className="font-mono text-xs">
+                      <TableCell className="font-mono text-xs py-4">
                         ${trade.exit_price.toFixed(2)}
                       </TableCell>
-                      <TableCell>{trade.quantity}</TableCell>
-                      <TableCell>
+                      <TableCell className="py-4">{trade.quantity}</TableCell>
+                      <TableCell className="py-4">
                         <div className="flex flex-col">
                           <span
                             className={cn(
-                              "font-semibold",
-                              trade.pnl_usd >= 0 ? "text-green-500" : "text-red-500"
+                              "font-mono font-semibold",
+                              trade.pnl_usd >= 0 ? "bull-text" : "bear-text"
                             )}
                           >
                             ${trade.pnl_usd.toFixed(2)}
                           </span>
                           <span
                             className={cn(
-                              "text-xs",
-                              trade.pnl_pct >= 0 ? "text-green-500/80" : "text-red-500/80"
+                              "text-xs font-mono",
+                              trade.pnl_pct >= 0 ? "bull-text/80" : "bear-text/80"
                             )}
                           >
                             ({trade.pnl_pct >= 0 ? "+" : ""}
@@ -354,11 +358,11 @@ export function TradeHistoryTable({ trades, loading = false }: TradeHistoryTable
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs">
+                      <TableCell className="text-xs py-4">
                         {trade.duration_minutes}m
                       </TableCell>
-                      <TableCell className="text-xs">{trade.strategy}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-xs py-4">{trade.strategy}</TableCell>
+                      <TableCell className="py-4">
                         <Badge
                           variant={trade.environment === "production" ? "default" : "outline"}
                           className="text-xs"
@@ -366,7 +370,7 @@ export function TradeHistoryTable({ trades, loading = false }: TradeHistoryTable
                           {trade.environment === "production" ? "PROD" : "PAPER"}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-4">
                         {trade.notes_count > 0 && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <StickyNote className="h-3 w-3" />

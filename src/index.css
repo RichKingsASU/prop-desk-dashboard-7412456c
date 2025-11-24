@@ -171,7 +171,7 @@ All colors MUST be HSL.
   
   .number-mono {
     font-variant-numeric: tabular-nums;
-    font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+    font-family: "JetBrains Mono", ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
   }
 }
 

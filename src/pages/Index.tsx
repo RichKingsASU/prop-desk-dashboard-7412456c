@@ -17,7 +17,8 @@ import { TradeHistoryTable } from "@/components/TradeHistoryTable";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Target } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Target, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 
 const Index = () => {
@@ -31,6 +32,8 @@ const Index = () => {
     buying_enabled: true,
     selling_enabled: true,
   });
+  const [newsPanelOpen, setNewsPanelOpen] = useState(true);
+  const [notesPanelOpen, setNotesPanelOpen] = useState(true);
 
   // Mock data fetching - replace with actual API calls
   useEffect(() => {
@@ -206,15 +209,35 @@ const Index = () => {
               <OptionsOrderTicket defaultSymbol={currentSymbol} />
             </div>
 
-            <div>
-              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">News & Alerts</h3>
-              <NewsAlertsPanel />
-            </div>
+            {/* Collapsible News Panel */}
+            <Collapsible open={newsPanelOpen} onOpenChange={setNewsPanelOpen}>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">News & Alerts</h3>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                    {newsPanelOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+              <CollapsibleContent>
+                <NewsAlertsPanel />
+              </CollapsibleContent>
+            </Collapsible>
 
-            <div>
-              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Trader Notes</h3>
-              <TraderNotesWidget defaultSymbol={currentSymbol} />
-            </div>
+            {/* Collapsible Notes Panel */}
+            <Collapsible open={notesPanelOpen} onOpenChange={setNotesPanelOpen}>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Trader Notes</h3>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                    {notesPanelOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+              <CollapsibleContent>
+                <TraderNotesWidget defaultSymbol={currentSymbol} />
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         </div>
 
