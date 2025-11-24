@@ -3,6 +3,8 @@ import { createChart, ColorType, CandlestickSeries, LineSeries, HistogramSeries 
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Settings } from "lucide-react";
 
 interface CandleData {
   time: string;
@@ -28,9 +30,10 @@ interface TradingViewChartProps {
   symbol: string;
   data?: CandleData[];
   levels?: KeyLevels;
+  showCard?: boolean;
 }
 
-export function TradingViewChart({ symbol, data, levels }: TradingViewChartProps) {
+export function TradingViewChart({ symbol, data, levels, showCard = true }: TradingViewChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const candlestickSeriesRef = useRef<any>(null);
@@ -45,6 +48,8 @@ export function TradingViewChart({ symbol, data, levels }: TradingViewChartProps
     sma200: false,
     bb: false,
   });
+  
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const [showLevels, setShowLevels] = useState(true);
 
@@ -407,123 +412,135 @@ export function TradingViewChart({ symbol, data, levels }: TradingViewChartProps
     };
   }, [symbol, indicators, showLevels]);
 
-  return (
-    <Card className="p-4">
-      <div className="mb-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-foreground">{symbol}</h3>
-            <p className="text-sm text-muted-foreground">Intraday - 1 minute intervals</p>
+  const chartContent = (
+    <div className="relative h-full">
+      <div ref={chartContainerRef} className="h-full" />
+      
+      {/* Discrete Floating Indicator Button */}
+      <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+        <PopoverTrigger asChild>
+          <button
+            className="absolute bottom-4 right-4 z-10 p-2.5 rounded-lg bg-background/60 backdrop-blur-md border border-white/10 opacity-60 hover:opacity-100 transition-all shadow-lg hover:shadow-xl"
+            title="Indicators & Settings"
+          >
+            <Settings className="h-4 w-4 text-foreground" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent 
+          className="w-64 bg-background/95 backdrop-blur-md border-white/10 shadow-2xl"
+          align="end"
+          side="top"
+        >
+          <div className="space-y-3">
+            <div className="pb-2 border-b border-white/10">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-foreground/70">
+                Chart Controls
+              </h4>
+            </div>
+            
+            {/* Key Levels Toggle */}
+            <div className="flex items-center justify-between">
+              <Label htmlFor="levels" className="text-xs font-medium cursor-pointer">
+                Key Levels
+              </Label>
+              <Checkbox
+                id="levels"
+                checked={showLevels}
+                onCheckedChange={(checked) => setShowLevels(checked as boolean)}
+              />
+            </div>
+            
+            <div className="h-px bg-white/10" />
+            
+            {/* Technical Indicators */}
+            <div className="space-y-2">
+              <h5 className="text-xs font-bold uppercase tracking-wider text-foreground/50">
+                Indicators
+              </h5>
+              
+              <div className="flex items-center justify-between">
+                <Label htmlFor="vwap" className="text-xs font-medium cursor-pointer">
+                  VWAP
+                </Label>
+                <Checkbox
+                  id="vwap"
+                  checked={indicators.vwap}
+                  onCheckedChange={(checked) => 
+                    setIndicators(prev => ({ ...prev, vwap: checked as boolean }))
+                  }
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <Label htmlFor="ema9" className="text-xs font-medium cursor-pointer">
+                  EMA 9
+                </Label>
+                <Checkbox
+                  id="ema9"
+                  checked={indicators.ema9}
+                  onCheckedChange={(checked) => 
+                    setIndicators(prev => ({ ...prev, ema9: checked as boolean }))
+                  }
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <Label htmlFor="ema21" className="text-xs font-medium cursor-pointer">
+                  EMA 21
+                </Label>
+                <Checkbox
+                  id="ema21"
+                  checked={indicators.ema21}
+                  onCheckedChange={(checked) => 
+                    setIndicators(prev => ({ ...prev, ema21: checked as boolean }))
+                  }
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <Label htmlFor="ema50" className="text-xs font-medium cursor-pointer">
+                  EMA 50
+                </Label>
+                <Checkbox
+                  id="ema50"
+                  checked={indicators.ema50}
+                  onCheckedChange={(checked) => 
+                    setIndicators(prev => ({ ...prev, ema50: checked as boolean }))
+                  }
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <Label htmlFor="sma200" className="text-xs font-medium cursor-pointer">
+                  SMA 200
+                </Label>
+                <Checkbox
+                  id="sma200"
+                  checked={indicators.sma200}
+                  onCheckedChange={(checked) => 
+                    setIndicators(prev => ({ ...prev, sma200: checked as boolean }))
+                  }
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <Label htmlFor="bb" className="text-xs font-medium cursor-pointer">
+                  Bollinger Bands
+                </Label>
+                <Checkbox
+                  id="bb"
+                  checked={indicators.bb}
+                  onCheckedChange={(checked) => 
+                    setIndicators(prev => ({ ...prev, bb: checked as boolean }))
+                  }
+                />
+              </div>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <button className="px-3 py-1 text-xs font-medium border border-border rounded hover:bg-accent/50 transition-colors">
-              1m
-            </button>
-            <button className="px-3 py-1 text-xs font-medium border border-border rounded hover:bg-accent/50 transition-colors">
-              5m
-            </button>
-            <button className="px-3 py-1 text-xs font-medium border border-border rounded hover:bg-accent/50 transition-colors">
-              15m
-            </button>
-          </div>
-        </div>
-        
-        {/* Technical Indicators Controls */}
-        <div className="flex flex-wrap gap-4 pt-3 border-t border-border">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="levels"
-              checked={showLevels}
-              onCheckedChange={(checked) => 
-                setShowLevels(checked as boolean)
-              }
-            />
-            <Label htmlFor="levels" className="text-xs font-medium cursor-pointer text-primary">
-              Key Levels
-            </Label>
-          </div>
-          
-          <div className="h-4 w-px bg-border" />
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="vwap"
-              checked={indicators.vwap}
-              onCheckedChange={(checked) => 
-                setIndicators(prev => ({ ...prev, vwap: checked as boolean }))
-              }
-            />
-            <Label htmlFor="vwap" className="text-xs font-medium cursor-pointer">
-              VWAP
-            </Label>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="ema9"
-              checked={indicators.ema9}
-              onCheckedChange={(checked) => 
-                setIndicators(prev => ({ ...prev, ema9: checked as boolean }))
-              }
-            />
-            <Label htmlFor="ema9" className="text-xs font-medium cursor-pointer">
-              EMA 9
-            </Label>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="ema21"
-              checked={indicators.ema21}
-              onCheckedChange={(checked) => 
-                setIndicators(prev => ({ ...prev, ema21: checked as boolean }))
-              }
-            />
-            <Label htmlFor="ema21" className="text-xs font-medium cursor-pointer">
-              EMA 21
-            </Label>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="ema50"
-              checked={indicators.ema50}
-              onCheckedChange={(checked) => 
-                setIndicators(prev => ({ ...prev, ema50: checked as boolean }))
-              }
-            />
-            <Label htmlFor="ema50" className="text-xs font-medium cursor-pointer">
-              EMA 50
-            </Label>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="sma200"
-              checked={indicators.sma200}
-              onCheckedChange={(checked) => 
-                setIndicators(prev => ({ ...prev, sma200: checked as boolean }))
-              }
-            />
-            <Label htmlFor="sma200" className="text-xs font-medium cursor-pointer">
-              SMA 200
-            </Label>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="bb"
-              checked={indicators.bb}
-              onCheckedChange={(checked) => 
-                setIndicators(prev => ({ ...prev, bb: checked as boolean }))
-              }
-            />
-            <Label htmlFor="bb" className="text-xs font-medium cursor-pointer">
-              Bollinger Bands
-            </Label>
-          </div>
-        </div>
-      </div>
-      <div ref={chartContainerRef} />
-    </Card>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
+
+  return showCard ? <Card className="p-4 h-full">{chartContent}</Card> : chartContent;
 }
