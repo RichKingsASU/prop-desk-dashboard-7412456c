@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardHeader } from "@/components/DashboardHeader";
-import { MarketOverview } from "@/components/MarketOverview";
-import { MarketTicker } from "@/components/MarketTicker";
 import { AccountPanel } from "@/components/AccountPanel";
+import { ChartHUD } from "@/components/ChartHUD";
 import { BotStatusPanel } from "@/components/BotStatusPanel";
-import { MasterControlPanel } from "@/components/MasterControlPanel";
 import { KPIGrid } from "@/components/KPIGrid";
 import { TradingViewChart } from "@/components/TradingViewChart";
 import { OptionsChain } from "@/components/OptionsChain";
@@ -135,20 +133,14 @@ const Index = () => {
         dayPnlPct={accountData?.day_pnl_pct || 0}
       />
 
-      {/* Market Ticker Strip */}
-      <MarketTicker />
-
       <div className="p-4 space-y-4">
-        {/* Top Row - Market Overview + Console Button */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide ui-label">Market Overview</h2>
-            <Button onClick={handleOpenConsole} size="sm" variant="outline" className="border-white/10">
-              <Target className="h-4 w-4 mr-2" />
-              Open Decision Console
-            </Button>
-          </div>
-          <MarketOverview />
+        {/* Top Row - Title Only */}
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide ui-label">Market Overview</h2>
+          <Button onClick={handleOpenConsole} size="sm" variant="outline" className="border-white/10">
+            <Target className="h-4 w-4 mr-2" />
+            Open Decision Console
+          </Button>
         </div>
 
         {/* Middle Row - Chart & Controls */}
@@ -162,7 +154,13 @@ const Index = () => {
                 <TabsTrigger value="options" className="flex-1 max-w-[150px]">Options Chain</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="chart" className="mt-0">
+              <TabsContent value="chart" className="mt-0 relative">
+                <ChartHUD 
+                  controls={botControls}
+                  onControlChange={handleControlChange}
+                  onPanic={handlePanic}
+                  botStatus={botStatus?.status || "flat"}
+                />
                 <TradingViewChart symbol={currentSymbol} />
               </TabsContent>
               
@@ -193,15 +191,6 @@ const Index = () => {
             <div>
               <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider ui-label">Bot Status</h3>
               <BotStatusPanel data={botStatus} loading={false} />
-            </div>
-            
-            <div>
-              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider ui-label">Master Controls</h3>
-              <MasterControlPanel
-                controls={botControls}
-                onControlChange={handleControlChange}
-                onPanic={handlePanic}
-              />
             </div>
 
             <div>
