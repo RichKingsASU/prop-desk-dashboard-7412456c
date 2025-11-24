@@ -107,7 +107,12 @@ const STORAGE_KEY = "dashboard-layout";
 export const LayoutProvider = ({ children }: { children: ReactNode }) => {
   const [layout, setLayout] = useState<LayoutState>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : defaultLayout;
+    if (saved) {
+      const savedLayout = JSON.parse(saved);
+      // Merge saved data with default to ensure all new properties exist
+      return { ...defaultLayout, ...savedLayout };
+    }
+    return defaultLayout;
   });
   const [currentWorkspace, setCurrentWorkspace] = useState<WorkspacePreset | null>(null);
 
