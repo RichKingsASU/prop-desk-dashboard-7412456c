@@ -24,6 +24,10 @@ export const LayoutControls = () => {
     { key: "showKPIs" as const, label: "KPI Metrics" },
     { key: "showOptionsChain" as const, label: "Options Chain" },
     { key: "showTradeHistory" as const, label: "Trade History" },
+    { key: "showWatchlist" as const, label: "Watchlist Tower" },
+    { key: "showBattleStation" as const, label: "Battle Station" },
+    { key: "showRadioFeed" as const, label: "Radio Feed" },
+    { key: "showVitalsBar" as const, label: "Vitals Bar" },
   ];
 
   return (
