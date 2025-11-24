@@ -10,6 +10,12 @@ export interface LayoutState {
   showKPIs: boolean;
   showOptionsChain: boolean;
   showTradeHistory: boolean;
+  // F1 Dashboard widgets
+  showWatchlist: boolean;
+  showTelemetry: boolean;
+  showBattleStation: boolean;
+  showRadioFeed: boolean;
+  showVitalsBar: boolean;
 }
 
 export type WorkspacePreset = "scan" | "trade" | "focus" | "full";
@@ -24,6 +30,12 @@ const defaultLayout: LayoutState = {
   showKPIs: true,
   showOptionsChain: true,
   showTradeHistory: true,
+  // F1 Dashboard widgets
+  showWatchlist: true,
+  showTelemetry: true,
+  showBattleStation: true,
+  showRadioFeed: true,
+  showVitalsBar: true,
 };
 
 const workspacePresets: Record<WorkspacePreset, LayoutState> = {
@@ -37,6 +49,12 @@ const workspacePresets: Record<WorkspacePreset, LayoutState> = {
     showKPIs: true,
     showOptionsChain: false,
     showTradeHistory: true,
+    // F1: Watchlist + Chart + News + Vitals
+    showWatchlist: true,
+    showTelemetry: true,
+    showBattleStation: false,
+    showRadioFeed: true,
+    showVitalsBar: true,
   },
   trade: {
     showAccountPanel: true,
@@ -48,6 +66,12 @@ const workspacePresets: Record<WorkspacePreset, LayoutState> = {
     showKPIs: false,
     showOptionsChain: true,
     showTradeHistory: false,
+    // F1: Watchlist + Chart + Battle Station + Vitals
+    showWatchlist: true,
+    showTelemetry: true,
+    showBattleStation: true,
+    showRadioFeed: false,
+    showVitalsBar: true,
   },
   focus: {
     showAccountPanel: true,
@@ -59,6 +83,12 @@ const workspacePresets: Record<WorkspacePreset, LayoutState> = {
     showKPIs: false,
     showOptionsChain: false,
     showTradeHistory: false,
+    // F1: Chart + Vitals only
+    showWatchlist: false,
+    showTelemetry: true,
+    showBattleStation: false,
+    showRadioFeed: false,
+    showVitalsBar: true,
   },
   full: defaultLayout,
 };
