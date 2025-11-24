@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Clock, Sun, Moon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { LayoutControls } from "@/components/LayoutControls";
 
 interface DashboardHeaderProps {
   currentSymbol: string;
@@ -111,8 +112,13 @@ export const DashboardHeader = ({
           </Select>
         </div>
 
-        {/* Right Section: Account Summary + Market Time */}
+        {/* Right Section: Layout Controls + Account Summary + Market Time */}
         <div className="flex items-center gap-6 min-w-fit">
+          {/* Layout Controls */}
+          <LayoutControls />
+          
+          <div className="h-8 w-px bg-white/10" />
+          
           <div className="text-right">
             <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide ui-label">Equity</div>
             <div className="number-mono text-base font-bold text-foreground">

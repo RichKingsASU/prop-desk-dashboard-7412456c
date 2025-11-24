@@ -18,9 +18,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Target, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
+import { useLayout } from "@/contexts/LayoutContext";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { layout } = useLayout();
   const [currentSymbol, setCurrentSymbol] = useState("SPY");
   const [accountData, setAccountData] = useState<any>(null);
   const [botStatus, setBotStatus] = useState<any>(null);
@@ -144,14 +146,19 @@ const Index = () => {
         </div>
 
         {/* Middle Row - Chart & Controls */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Chart & Options Section - 2/3 width */}
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 transition-all duration-300">
+          {/* Chart & Options Section - Dynamic width based on sidebar visibility */}
+          <div className={`transition-all duration-300 ${
+            layout.showAccountPanel || layout.showBotStatus || layout.showOptionsPositions || 
+            layout.showOrderTicket || layout.showNews || layout.showNotes 
+              ? "lg:col-span-2" 
+              : "lg:col-span-3"
+          }`}>
             <Tabs defaultValue="chart" className="w-full">
               <TabsList className="w-full justify-start mb-4">
                 <TabsTrigger value="chart" className="flex-1 max-w-[120px]">Chart</TabsTrigger>
-                <TabsTrigger value="kpis" className="flex-1 max-w-[120px]">KPIs</TabsTrigger>
-                <TabsTrigger value="options" className="flex-1 max-w-[150px]">Options Chain</TabsTrigger>
+                {layout.showKPIs && <TabsTrigger value="kpis" className="flex-1 max-w-[120px]">KPIs</TabsTrigger>}
+                {layout.showOptionsChain && <TabsTrigger value="options" className="flex-1 max-w-[150px]">Options Chain</TabsTrigger>}
               </TabsList>
               
               <TabsContent value="chart" className="mt-0 relative">
@@ -164,77 +171,98 @@ const Index = () => {
                 <TradingViewChart symbol={currentSymbol} />
               </TabsContent>
               
-              <TabsContent value="kpis" className="mt-0">
-                <Card className="p-6">
-                  <KPIGrid data={snapshotData} loading={!snapshotData} />
-                </Card>
-              </TabsContent>
+              {layout.showKPIs && (
+                <TabsContent value="kpis" className="mt-0">
+                  <Card className="p-6">
+                    <KPIGrid data={snapshotData} loading={!snapshotData} />
+                  </Card>
+                </TabsContent>
+              )}
               
-              <TabsContent value="options" className="mt-0">
-                <OptionsChain symbol={currentSymbol} />
-              </TabsContent>
+              {layout.showOptionsChain && (
+                <TabsContent value="options" className="mt-0">
+                  <OptionsChain symbol={currentSymbol} />
+                </TabsContent>
+              )}
             </Tabs>
           </div>
 
-          {/* Command & Status Column - 1/3 width */}
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider ui-label">Account & Risk</h3>
-              <AccountPanel data={accountData} loading={false} />
-            </div>
+          {/* Command & Status Column - Conditionally rendered */}
+          {(layout.showAccountPanel || layout.showBotStatus || layout.showOptionsPositions || 
+            layout.showOrderTicket || layout.showNews || layout.showNotes) && (
+            <div className="space-y-4 transition-all duration-300 animate-fade-in">
+              {layout.showAccountPanel && (
+                <div className="transition-all duration-300 animate-fade-in">
+                  <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider ui-label">Account & Risk</h3>
+                  <AccountPanel data={accountData} loading={false} />
+                </div>
+              )}
 
-            <div>
-              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider ui-label">Options Positions</h3>
-              <OptionsPositionsTable />
-            </div>
-            
-            <div>
-              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider ui-label">Bot Status</h3>
-              <BotStatusPanel data={botStatus} loading={false} />
-            </div>
+              {layout.showOptionsPositions && (
+                <div className="transition-all duration-300 animate-fade-in">
+                  <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider ui-label">Options Positions</h3>
+                  <OptionsPositionsTable />
+                </div>
+              )}
+              
+              {layout.showBotStatus && (
+                <div className="transition-all duration-300 animate-fade-in">
+                  <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider ui-label">Bot Status</h3>
+                  <BotStatusPanel data={botStatus} loading={false} />
+                </div>
+              )}
 
-            <div>
-              <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider ui-label">Options Order Ticket</h3>
-              <OptionsOrderTicket defaultSymbol={currentSymbol} />
+              {layout.showOrderTicket && (
+                <div className="transition-all duration-300 animate-fade-in">
+                  <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider ui-label">Options Order Ticket</h3>
+                  <OptionsOrderTicket defaultSymbol={currentSymbol} />
+                </div>
+              )}
+
+              {/* Collapsible News Panel */}
+              {layout.showNews && (
+                <Collapsible open={newsPanelOpen} onOpenChange={setNewsPanelOpen} className="transition-all duration-300 animate-fade-in">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ui-label">News & Alerts</h3>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                        {newsPanelOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+                  <CollapsibleContent>
+                    <NewsAlertsPanel />
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+
+              {/* Collapsible Notes Panel */}
+              {layout.showNotes && (
+                <Collapsible open={notesPanelOpen} onOpenChange={setNotesPanelOpen} className="transition-all duration-300 animate-fade-in">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ui-label">Trader Notes</h3>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                        {notesPanelOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+                  <CollapsibleContent>
+                    <TraderNotesWidget defaultSymbol={currentSymbol} />
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
             </div>
-
-            {/* Collapsible News Panel */}
-            <Collapsible open={newsPanelOpen} onOpenChange={setNewsPanelOpen}>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ui-label">News & Alerts</h3>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                    {newsPanelOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </Button>
-                </CollapsibleTrigger>
-              </div>
-              <CollapsibleContent>
-                <NewsAlertsPanel />
-              </CollapsibleContent>
-            </Collapsible>
-
-            {/* Collapsible Notes Panel */}
-            <Collapsible open={notesPanelOpen} onOpenChange={setNotesPanelOpen}>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ui-label">Trader Notes</h3>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                    {notesPanelOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </Button>
-                </CollapsibleTrigger>
-              </div>
-              <CollapsibleContent>
-                <TraderNotesWidget defaultSymbol={currentSymbol} />
-              </CollapsibleContent>
-            </Collapsible>
-          </div>
+          )}
         </div>
 
         {/* Bottom - Trade History */}
-        <div>
-          <h3 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide ui-label">Trade History</h3>
-          <TradeHistoryTable />
-        </div>
+        {layout.showTradeHistory && (
+          <div className="transition-all duration-300 animate-fade-in">
+            <h3 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide ui-label">Trade History</h3>
+            <TradeHistoryTable />
+          </div>
+        )}
       </div>
     </div>
   );
