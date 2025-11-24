@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2, FileText } from "lucide-react";
+import { Plus, Trash2, FileText, Lock, Unlock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +50,7 @@ export function OptionsOrderTicket({ defaultSymbol }: OptionsOrderTicketProps) {
   const [price, setPrice] = useState("2.50");
   const [timeInForce, setTimeInForce] = useState<"day" | "gtc">("day");
   const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [isLocked, setIsLocked] = useState(true);
 
   const strategyTemplates: Record<Strategy, number> = {
     single: 1,
@@ -115,25 +116,47 @@ export function OptionsOrderTicket({ defaultSymbol }: OptionsOrderTicketProps) {
   };
 
   return (
-    <Card className="p-5">
+    <Card className="p-5 transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100 opacity-75">
       <div className="space-y-5">
         {/* Header */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold">Options Order Ticket</h3>
-            <Badge variant="outline" className="text-xs font-semibold">
-              {defaultSymbol}
-            </Badge>
+            <h3 className="text-sm font-semibold ui-label">Options Order Ticket</h3>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={isLocked ? "outline" : "default"}
+                size="sm"
+                onClick={() => setIsLocked(!isLocked)}
+                className="h-7 px-2"
+              >
+                {isLocked ? (
+                  <>
+                    <Lock className="h-3 w-3 mr-1" />
+                    <span className="text-xs">Locked</span>
+                  </>
+                ) : (
+                  <>
+                    <Unlock className="h-3 w-3 mr-1" />
+                    <span className="text-xs">Unlocked</span>
+                  </>
+                )}
+              </Button>
+              <Badge variant="outline" className="text-xs font-semibold">
+                {defaultSymbol}
+              </Badge>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground">Build and submit options orders</p>
+          <p className="text-xs text-muted-foreground">
+            {isLocked ? "Click 'Unlock' to adjust values" : "Build and submit options orders"}
+          </p>
         </div>
 
         <Separator />
 
         {/* Strategy Selector */}
         <div className="space-y-2">
-          <Label className="text-xs font-semibold uppercase tracking-wide">Strategy</Label>
-          <Select value={strategy} onValueChange={(v) => handleStrategyChange(v as Strategy)}>
+          <Label className="text-xs font-semibold uppercase tracking-wide ui-label">Strategy</Label>
+          <Select value={strategy} onValueChange={(v) => handleStrategyChange(v as Strategy)} disabled={isLocked}>
             <SelectTrigger className="bg-background">
               <SelectValue />
             </SelectTrigger>
@@ -151,9 +174,9 @@ export function OptionsOrderTicket({ defaultSymbol }: OptionsOrderTicketProps) {
         {/* Legs Builder */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <Label className="text-xs font-semibold uppercase tracking-wide">Legs</Label>
+            <Label className="text-xs font-semibold uppercase tracking-wide ui-label">Legs</Label>
             {strategy === "custom" && (
-              <Button size="sm" variant="outline" onClick={addLeg} className="h-7 text-xs">
+              <Button size="sm" variant="outline" onClick={addLeg} className="h-7 text-xs" disabled={isLocked}>
                 <Plus className="h-3 w-3 mr-1" />
                 Add Leg
               </Button>
@@ -171,6 +194,7 @@ export function OptionsOrderTicket({ defaultSymbol }: OptionsOrderTicketProps) {
                       variant="ghost"
                       onClick={() => removeLeg(leg.id)}
                       className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
+                      disabled={isLocked}
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
@@ -179,8 +203,8 @@ export function OptionsOrderTicket({ defaultSymbol }: OptionsOrderTicketProps) {
                 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Label className="text-[10px] text-muted-foreground uppercase">Side</Label>
-                    <Select value={leg.side} onValueChange={(v) => updateLeg(leg.id, "side", v)}>
+                    <Label className="text-[10px] text-muted-foreground uppercase ui-label">Side</Label>
+                    <Select value={leg.side} onValueChange={(v) => updateLeg(leg.id, "side", v)} disabled={isLocked}>
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
@@ -194,30 +218,32 @@ export function OptionsOrderTicket({ defaultSymbol }: OptionsOrderTicketProps) {
                   </div>
 
                   <div>
-                    <Label className="text-[10px] text-muted-foreground uppercase">Qty</Label>
+                    <Label className="text-[10px] text-muted-foreground uppercase ui-label">Qty</Label>
                     <Input
                       type="number"
                       value={leg.quantity}
                       onChange={(e) => updateLeg(leg.id, "quantity", parseInt(e.target.value))}
                       className="h-8 text-xs"
                       min={1}
+                      disabled={isLocked}
                     />
                   </div>
 
                   <div>
-                    <Label className="text-[10px] text-muted-foreground uppercase">Strike</Label>
+                    <Label className="text-[10px] text-muted-foreground uppercase ui-label">Strike</Label>
                     <Input
                       type="number"
                       value={leg.strike}
                       onChange={(e) => updateLeg(leg.id, "strike", parseFloat(e.target.value))}
                       className="h-8 text-xs"
                       step={1}
+                      disabled={isLocked}
                     />
                   </div>
 
                   <div>
-                    <Label className="text-[10px] text-muted-foreground uppercase">Type</Label>
-                    <Select value={leg.type} onValueChange={(v) => updateLeg(leg.id, "type", v)}>
+                    <Label className="text-[10px] text-muted-foreground uppercase ui-label">Type</Label>
+                    <Select value={leg.type} onValueChange={(v) => updateLeg(leg.id, "type", v)} disabled={isLocked}>
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
@@ -237,12 +263,12 @@ export function OptionsOrderTicket({ defaultSymbol }: OptionsOrderTicketProps) {
 
         {/* Order Details */}
         <div className="space-y-3">
-          <Label className="text-xs font-semibold uppercase tracking-wide">Order Details</Label>
+          <Label className="text-xs font-semibold uppercase tracking-wide ui-label">Order Details</Label>
           
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-[10px] text-muted-foreground uppercase">Order Type</Label>
-              <Select value={orderType} onValueChange={(v: any) => setOrderType(v)}>
+              <Label className="text-[10px] text-muted-foreground uppercase ui-label">Order Type</Label>
+              <Select value={orderType} onValueChange={(v: any) => setOrderType(v)} disabled={isLocked}>
                 <SelectTrigger className="h-9 text-xs bg-background">
                   <SelectValue />
                 </SelectTrigger>
@@ -254,7 +280,7 @@ export function OptionsOrderTicket({ defaultSymbol }: OptionsOrderTicketProps) {
             </div>
 
             <div>
-              <Label className="text-[10px] text-muted-foreground uppercase">
+              <Label className="text-[10px] text-muted-foreground uppercase ui-label">
                 {orderType === "limit" ? "Net Debit/Credit" : "Market"}
               </Label>
               <Input
@@ -262,15 +288,15 @@ export function OptionsOrderTicket({ defaultSymbol }: OptionsOrderTicketProps) {
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 className="h-9 text-xs"
-                disabled={orderType === "market"}
+                disabled={orderType === "market" || isLocked}
                 placeholder="0.00"
               />
             </div>
           </div>
 
           <div>
-            <Label className="text-[10px] text-muted-foreground uppercase">Time in Force</Label>
-            <Select value={timeInForce} onValueChange={(v: any) => setTimeInForce(v)}>
+            <Label className="text-[10px] text-muted-foreground uppercase ui-label">Time in Force</Label>
+            <Select value={timeInForce} onValueChange={(v: any) => setTimeInForce(v)} disabled={isLocked}>
               <SelectTrigger className="h-9 text-xs bg-background">
                 <SelectValue />
               </SelectTrigger>
@@ -310,7 +336,7 @@ export function OptionsOrderTicket({ defaultSymbol }: OptionsOrderTicketProps) {
         </div>
 
         {/* Submit Button */}
-        <Button onClick={handleReview} className="w-full" size="lg">
+        <Button onClick={handleReview} className="w-full" size="lg" disabled={isLocked}>
           <FileText className="mr-2 h-4 w-4" />
           Review Order
         </Button>
