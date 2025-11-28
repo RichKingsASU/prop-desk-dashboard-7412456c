@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { WatchlistTower } from "@/components/f1/WatchlistTower";
 import { TelemetryChart } from "@/components/f1/TelemetryChart";
 import { BattleStation } from "@/components/f1/BattleStation";
@@ -8,10 +9,15 @@ import { DashboardHeader } from "@/components/DashboardHeader";
 import { useLayout } from "@/contexts/LayoutContext";
 
 const F1Dashboard = () => {
+  const navigate = useNavigate();
   const [currentSymbol, setCurrentSymbol] = useState("SPY");
   const [secondSymbol, setSecondSymbol] = useState("QQQ");
   const [splitMode, setSplitMode] = useState(false);
   const { layout } = useLayout();
+
+  const handleOpenConsole = (symbol: string) => {
+    navigate(`/console/${symbol}`);
+  };
 
   // Mock data
   const accountData = {
@@ -85,7 +91,10 @@ const F1Dashboard = () => {
         {/* Left Sidebar - Watchlist Tower (2 cols) */}
         {layout.showWatchlist && (
           <div className="col-span-2 animate-fade-in">
-            <WatchlistTower onSymbolClick={setCurrentSymbol} />
+            <WatchlistTower 
+              onSymbolClick={setCurrentSymbol}
+              onSymbolDoubleClick={handleOpenConsole}
+            />
           </div>
         )}
 
@@ -94,11 +103,11 @@ const F1Dashboard = () => {
           <div className={`${telemetryColSpan} animate-fade-in transition-all duration-300`}>
             {splitMode ? (
               <div className="grid grid-cols-2 gap-4 h-full">
-                <TelemetryChart {...chartData} />
-                <TelemetryChart {...secondChartData} />
+                <TelemetryChart {...chartData} onOpenConsole={() => handleOpenConsole(chartData.symbol)} />
+                <TelemetryChart {...secondChartData} onOpenConsole={() => handleOpenConsole(secondChartData.symbol)} />
               </div>
             ) : (
-              <TelemetryChart {...chartData} />
+              <TelemetryChart {...chartData} onOpenConsole={() => handleOpenConsole(chartData.symbol)} />
             )}
           </div>
         )}
