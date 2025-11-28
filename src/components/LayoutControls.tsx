@@ -10,11 +10,25 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Layout, Scan, Target, Focus, Maximize2 } from "lucide-react";
 import { useLayout } from "@/contexts/LayoutContext";
+import { useLocation } from "react-router-dom";
 
 export const LayoutControls = () => {
   const { layout, updateLayout, setWorkspace, currentWorkspace } = useLayout();
+  const location = useLocation();
 
-  const widgets = [
+  // Show different widgets based on current route
+  const isF1Dashboard = location.pathname === "/";
+  const isLegacyDashboard = location.pathname === "/legacy";
+
+  const f1Widgets = [
+    { key: "showWatchlist" as const, label: "Watchlist Tower" },
+    { key: "showTelemetry" as const, label: "Chart" },
+    { key: "showBattleStation" as const, label: "Battle Station" },
+    { key: "showRadioFeed" as const, label: "Radio Feed" },
+    { key: "showVitalsBar" as const, label: "Vitals Bar" },
+  ];
+
+  const legacyWidgets = [
     { key: "showAccountPanel" as const, label: "Account & Risk" },
     { key: "showBotStatus" as const, label: "Bot Status" },
     { key: "showOptionsPositions" as const, label: "Options Positions" },
@@ -24,11 +38,9 @@ export const LayoutControls = () => {
     { key: "showKPIs" as const, label: "KPI Metrics" },
     { key: "showOptionsChain" as const, label: "Options Chain" },
     { key: "showTradeHistory" as const, label: "Trade History" },
-    { key: "showWatchlist" as const, label: "Watchlist Tower" },
-    { key: "showBattleStation" as const, label: "Battle Station" },
-    { key: "showRadioFeed" as const, label: "Radio Feed" },
-    { key: "showVitalsBar" as const, label: "Vitals Bar" },
   ];
+
+  const widgets = isF1Dashboard ? f1Widgets : isLegacyDashboard ? legacyWidgets : f1Widgets;
 
   return (
     <div className="flex items-center gap-2">
