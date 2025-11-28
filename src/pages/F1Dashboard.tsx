@@ -86,6 +86,19 @@ const F1Dashboard = () => {
         onSecondSymbolChange={setSecondSymbol}
       />
 
+      {/* Top Bar - Vitals */}
+      {layout.showVitalsBar && (
+        <div className="px-4 pt-4 animate-fade-in">
+          <VitalsBar
+            equity={accountData.equity}
+            buyingPower={accountData.buyingPower}
+            maxBuyingPower={accountData.maxBuyingPower}
+            dayPnl={accountData.dayPnl}
+            dayPnlPct={accountData.dayPnlPct}
+          />
+        </div>
+      )}
+
       {/* Main Grid Layout */}
       <div className={`flex-1 grid ${gridClasses} gap-4 p-4 overflow-hidden transition-all duration-300 ease-in-out`}>
         {/* Left Sidebar - Watchlist Tower (2 cols) */}
@@ -131,19 +144,6 @@ const F1Dashboard = () => {
           </div>
         )}
       </div>
-
-      {/* Bottom Bar - Vitals */}
-      {layout.showVitalsBar && (
-        <div className="px-4 pb-4 animate-fade-in">
-          <VitalsBar
-            equity={accountData.equity}
-            buyingPower={accountData.buyingPower}
-            maxBuyingPower={accountData.maxBuyingPower}
-            dayPnl={accountData.dayPnl}
-            dayPnlPct={accountData.dayPnlPct}
-          />
-        </div>
-      )}
     </div>
   );
 };
