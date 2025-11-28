@@ -286,8 +286,16 @@ export function TradingViewChart({ symbol, data, levels, showCard = true }: Trad
     const closePrices = mockData.map(d => d.close);
     const times = mockData.map(d => d.time as any);
 
-    // Clear existing indicator series
-    indicatorSeriesRef.current.forEach(series => chart.removeSeries(series));
+    // Clear existing indicator series safely
+    indicatorSeriesRef.current.forEach(series => {
+      if (series && chartRef.current) {
+        try {
+          chartRef.current.removeSeries(series);
+        } catch (e) {
+          // Series already removed or invalid
+        }
+      }
+    });
     indicatorSeriesRef.current.clear();
 
     if (indicators.vwap) {
