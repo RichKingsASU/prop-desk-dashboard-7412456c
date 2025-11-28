@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TrendingUp, TrendingDown, Flame, Zap } from "lucide-react";
 
 interface WatchlistItem {
@@ -48,7 +49,13 @@ const MiniSparkline = ({ data }: { data: number[] }) => {
   );
 };
 
-export const WatchlistTower = ({ onSymbolClick }: { onSymbolClick?: (symbol: string) => void }) => {
+export const WatchlistTower = ({ 
+  onSymbolClick, 
+  onSymbolDoubleClick 
+}: { 
+  onSymbolClick?: (symbol: string) => void;
+  onSymbolDoubleClick?: (symbol: string) => void;
+}) => {
   return (
     <Card className="h-full bg-card/50 backdrop-blur-sm border-white/10">
       <div className="p-4 border-b border-white/10">
@@ -60,11 +67,13 @@ export const WatchlistTower = ({ onSymbolClick }: { onSymbolClick?: (symbol: str
       <ScrollArea className="h-[calc(100vh-12rem)]">
         <div className="p-2 space-y-1">
           {mockWatchlist.map((item) => (
-            <div
-              key={item.symbol}
-              onClick={() => onSymbolClick?.(item.symbol)}
-              className="group p-3 rounded-lg bg-background/50 border border-white/5 hover:border-primary/30 hover:bg-background/70 transition-all cursor-pointer"
-            >
+            <Tooltip key={item.symbol}>
+              <TooltipTrigger asChild>
+                <div
+                  onClick={() => onSymbolClick?.(item.symbol)}
+                  onDoubleClick={() => onSymbolDoubleClick?.(item.symbol)}
+                  className="group p-3 rounded-lg bg-background/50 border border-white/5 hover:border-primary/30 hover:bg-background/70 transition-all cursor-pointer"
+                >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold number-mono">{item.symbol}</span>
@@ -87,7 +96,12 @@ export const WatchlistTower = ({ onSymbolClick }: { onSymbolClick?: (symbol: str
                   {item.changePct >= 0 ? "+" : ""}{item.changePct.toFixed(2)}%
                 </Badge>
               </div>
-            </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p className="text-xs">Click to select • Double-click for Console</p>
+              </TooltipContent>
+            </Tooltip>
           ))}
         </div>
       </ScrollArea>

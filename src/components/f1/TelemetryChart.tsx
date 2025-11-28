@@ -1,7 +1,9 @@
 import { Card } from "@/components/ui/card";
 import { TradingViewChart } from "@/components/TradingViewChart";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUp, ArrowDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ArrowUp, ArrowDown, Maximize2 } from "lucide-react";
 
 interface TelemetryChartProps {
   symbol: string;
@@ -10,6 +12,7 @@ interface TelemetryChartProps {
   changePct: number;
   openPnL?: number;
   positionSize?: number;
+  onOpenConsole?: () => void;
 }
 
 export const TelemetryChart = ({
@@ -19,6 +22,7 @@ export const TelemetryChart = ({
   changePct,
   openPnL,
   positionSize,
+  onOpenConsole,
 }: TelemetryChartProps) => {
   const hasPosition = openPnL !== undefined && positionSize !== undefined && positionSize > 0;
   const isProfitable = (openPnL || 0) >= 0;
@@ -40,6 +44,23 @@ export const TelemetryChart = ({
             {changePct >= 0 ? <ArrowUp className="h-3 w-3 mr-1 inline" /> : <ArrowDown className="h-3 w-3 mr-1 inline" />}
             {change >= 0 ? "+" : ""}{change.toFixed(2)} ({changePct >= 0 ? "+" : ""}{changePct.toFixed(2)}%)
           </Badge>
+          {onOpenConsole && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onOpenConsole}
+                  className="h-8 w-8 ml-2 hover:bg-primary/20 hover:border-primary/40 border border-white/10"
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">Open Console with Battleground Mode</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </div>
 
