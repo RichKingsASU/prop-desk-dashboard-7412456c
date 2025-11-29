@@ -16,6 +16,7 @@ export interface LayoutState {
   showBattleStation: boolean;
   showRadioFeed: boolean;
   showVitalsBar: boolean;
+  showIndicatorStrip: boolean;
 }
 
 export type WorkspacePreset = "scan" | "trade" | "focus" | "full";
@@ -36,6 +37,7 @@ const defaultLayout: LayoutState = {
   showBattleStation: true,
   showRadioFeed: true,
   showVitalsBar: true,
+  showIndicatorStrip: true,
 };
 
 const workspacePresets: Record<WorkspacePreset, LayoutState> = {
@@ -55,6 +57,7 @@ const workspacePresets: Record<WorkspacePreset, LayoutState> = {
     showBattleStation: false,
     showRadioFeed: true,
     showVitalsBar: true,
+    showIndicatorStrip: true,
   },
   trade: {
     showAccountPanel: true,
@@ -72,6 +75,7 @@ const workspacePresets: Record<WorkspacePreset, LayoutState> = {
     showBattleStation: true,
     showRadioFeed: false,
     showVitalsBar: true,
+    showIndicatorStrip: true,
   },
   focus: {
     showAccountPanel: true,
@@ -89,6 +93,7 @@ const workspacePresets: Record<WorkspacePreset, LayoutState> = {
     showBattleStation: false,
     showRadioFeed: false,
     showVitalsBar: true,
+    showIndicatorStrip: false,
   },
   full: defaultLayout,
 };
