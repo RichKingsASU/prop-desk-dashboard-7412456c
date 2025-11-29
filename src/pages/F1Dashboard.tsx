@@ -1,10 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { WatchlistTower } from "@/components/f1/WatchlistTower";
 import { TelemetryChart } from "@/components/f1/TelemetryChart";
 import { BattleStation } from "@/components/f1/BattleStation";
 import { RadioFeed } from "@/components/f1/RadioFeed";
 import { VitalsBar } from "@/components/f1/VitalsBar";
+import { IndicatorStrip } from "@/components/f1/IndicatorStrip";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { useLayout } from "@/contexts/LayoutContext";
 
@@ -14,6 +15,69 @@ const F1Dashboard = () => {
   const [secondSymbol, setSecondSymbol] = useState("QQQ");
   const [splitMode, setSplitMode] = useState(false);
   const { layout } = useLayout();
+
+  // Dynamic snapshot data for indicator cards
+  const [snapshotData, setSnapshotData] = useState({
+    rsi_14: 64,
+    rsi_zone: "Bullish",
+    macd_state: "Bullish",
+    rvol: 1.8,
+    trend_bias: "Bullish",
+    volatility_regime: "Normal",
+  });
+
+  // Simulate real-time data updates every 3-5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSnapshotData((prev) => {
+        // Simulate RSI fluctuation
+        const rsiDelta = (Math.random() - 0.5) * 8;
+        const newRSI = Math.max(30, Math.min(85, prev.rsi_14 + rsiDelta));
+        
+        let rsiZone = "Neutral";
+        if (newRSI >= 70) rsiZone = "Overbought";
+        else if (newRSI >= 55) rsiZone = "Bullish";
+        else if (newRSI <= 30) rsiZone = "Oversold";
+        else if (newRSI <= 45) rsiZone = "Bearish";
+
+        // Simulate MACD state changes
+        const macdRoll = Math.random();
+        let macdState = prev.macd_state;
+        if (macdRoll < 0.15) macdState = "Bullish";
+        else if (macdRoll < 0.3) macdState = "Bearish";
+        else if (macdRoll < 0.45) macdState = "Neutral";
+
+        // Simulate RVOL spikes
+        const rvolDelta = (Math.random() - 0.5) * 0.4;
+        const newRVOL = Math.max(0.5, Math.min(3.5, prev.rvol + rvolDelta));
+
+        // Simulate trend bias
+        const trendRoll = Math.random();
+        let trendBias = prev.trend_bias;
+        if (trendRoll < 0.2) trendBias = "Bullish";
+        else if (trendRoll < 0.4) trendBias = "Bearish";
+        else if (trendRoll < 0.6) trendBias = "Neutral";
+
+        // Simulate volatility regime
+        const volRoll = Math.random();
+        let volRegime = prev.volatility_regime;
+        if (volRoll < 0.15) volRegime = "High";
+        else if (volRoll < 0.3) volRegime = "Low";
+        else if (volRoll < 0.5) volRegime = "Normal";
+
+        return {
+          rsi_14: Math.round(newRSI),
+          rsi_zone: rsiZone,
+          macd_state: macdState,
+          rvol: newRVOL,
+          trend_bias: trendBias,
+          volatility_regime: volRegime,
+        };
+      });
+    }, Math.random() * 2000 + 3000); // Random interval 3-5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleOpenConsole = (symbol: string) => {
     navigate(`/console/${symbol}`);
@@ -96,6 +160,13 @@ const F1Dashboard = () => {
             dayPnl={accountData.dayPnl}
             dayPnlPct={accountData.dayPnlPct}
           />
+        </div>
+      )}
+
+      {/* Indicator Strip */}
+      {layout.showIndicatorStrip && (
+        <div className="animate-fade-in">
+          <IndicatorStrip snapshotData={snapshotData} />
         </div>
       )}
 
