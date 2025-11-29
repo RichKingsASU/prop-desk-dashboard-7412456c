@@ -1,10 +1,11 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Sun, Moon, Columns2 } from "lucide-react";
+import { Clock, Sun, Moon, Columns2, BarChart3, Home, Terminal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { LayoutControls } from "@/components/LayoutControls";
+import { useNavigate, useLocation } from "react-router-dom";
 
 interface DashboardHeaderProps {
   currentSymbol: string;
@@ -34,6 +35,8 @@ export const DashboardHeader = ({
   onSecondSymbolChange,
 }: DashboardHeaderProps) => {
   const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [timeToClose, setTimeToClose] = useState("");
   const [marketStatus, setMarketStatus] = useState<"open" | "closed">("open");
 
@@ -83,6 +86,40 @@ export const DashboardHeader = ({
           >
             {environment.toUpperCase()}
           </Badge>
+          
+          {/* Navigation Buttons */}
+          <div className="flex items-center gap-1 ml-4 border-l border-white/10 pl-4">
+            <Button
+              variant={location.pathname === "/" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => navigate("/")}
+              className="h-8 px-3"
+              title="F1 Dashboard"
+            >
+              <Home className="h-4 w-4 mr-1" />
+              <span className="text-xs">Dashboard</span>
+            </Button>
+            <Button
+              variant={location.pathname === "/options" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => navigate("/options")}
+              className="h-8 px-3"
+              title="Options Analysis Center"
+            >
+              <BarChart3 className="h-4 w-4 mr-1" />
+              <span className="text-xs">Options</span>
+            </Button>
+            <Button
+              variant={location.pathname.startsWith("/console") ? "default" : "ghost"}
+              size="sm"
+              onClick={() => navigate(`/console/${currentSymbol}`)}
+              className="h-8 px-3"
+              title="Decision Console"
+            >
+              <Terminal className="h-4 w-4 mr-1" />
+              <span className="text-xs">Console</span>
+            </Button>
+          </div>
           
           {/* Theme Toggle */}
           <Button
