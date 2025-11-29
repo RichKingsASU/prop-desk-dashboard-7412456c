@@ -7,6 +7,7 @@ import { RadioFeed } from "@/components/f1/RadioFeed";
 import { VitalsBar } from "@/components/f1/VitalsBar";
 import { IndicatorStrip } from "@/components/f1/IndicatorStrip";
 import { DashboardHeader } from "@/components/DashboardHeader";
+import { OptionsChain } from "@/components/OptionsChain";
 import { useLayout } from "@/contexts/LayoutContext";
 
 const F1Dashboard = () => {
@@ -215,6 +216,13 @@ const F1Dashboard = () => {
           </div>
         )}
       </div>
+
+      {/* Options Chain Panel - Collapsible section below main grid */}
+      {layout.showOptionsChain && (
+        <div className="px-4 pb-4 animate-fade-in">
+          <OptionsChain symbol={currentSymbol} />
+        </div>
+      )}
     </div>
   );
 };
