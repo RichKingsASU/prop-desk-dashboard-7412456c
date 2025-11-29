@@ -26,6 +26,8 @@ export const LayoutControls = () => {
     { key: "showBattleStation" as const, label: "Battle Station" },
     { key: "showRadioFeed" as const, label: "Radio Feed" },
     { key: "showVitalsBar" as const, label: "Vitals Bar" },
+    { key: "showIndicatorStrip" as const, label: "Indicator Strip" },
+    { key: "showOptionsChain" as const, label: "Options Chain" },
   ];
 
   const legacyWidgets = [
