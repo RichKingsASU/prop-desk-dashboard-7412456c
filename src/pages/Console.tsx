@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Wifi, WifiOff } from "lucide-react";
+import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConsoleHeader } from "@/components/ConsoleHeader";
 import { StructureMap } from "@/components/console/StructureMap";
 import { ExecutionChart } from "@/components/console/ExecutionChart";
 import { DecisionStrip } from "@/components/console/DecisionStrip";
@@ -157,78 +157,19 @@ const Console = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top Symbol Bar */}
-      <div className="border-b border-border bg-card">
-        <div className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link to="/">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Dashboard
-                </Button>
-              </Link>
-              
-              <div className="border-l border-border pl-4">
-                <div className="flex items-baseline gap-3">
-                  <h1 className="text-2xl font-bold">{symbol}</h1>
-                  {!loading && snapshotData && (
-                    <>
-                      <span className="text-sm text-muted-foreground">
-                        {snapshotData.company_name}
-                      </span>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-xl font-semibold number-mono">
-                          ${snapshotData.last_price.toFixed(2)}
-                        </span>
-                        <span className={snapshotData.last_price_change >= 0 ? "text-bull" : "text-bear"}>
-                          {snapshotData.last_price_change >= 0 ? "+" : ""}
-                          {snapshotData.last_price_change.toFixed(2)} (
-                          {snapshotData.last_price_change_pct >= 0 ? "+" : ""}
-                          {snapshotData.last_price_change_pct.toFixed(2)}%)
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
-                <div className="flex gap-2 mt-2">
-                  {!loading && snapshotData && (
-                    <>
-                      <Badge variant={snapshotData.day_bias === "Bullish" ? "default" : "secondary"}>
-                        {snapshotData.day_bias}
-                      </Badge>
-                      <Badge variant="outline">{session}</Badge>
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        {connected ? (
-                          <>
-                            <Wifi className="h-3 w-3 text-bull" />
-                            <span>Live</span>
-                          </>
-                        ) : (
-                          <>
-                            <WifiOff className="h-3 w-3 text-muted-foreground" />
-                            <span>Delayed</span>
-                          </>
-                        )}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        Updated {new Date(lastUpdate).toLocaleTimeString()}
-                      </span>
-                    </>
-                  )}
-                  {loading && (
-                    <>
-                      <Skeleton className="h-5 w-16" />
-                      <Skeleton className="h-5 w-20" />
-                      <Skeleton className="h-5 w-16" />
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Console Header with Navigation */}
+      <ConsoleHeader
+        symbol={symbol}
+        companyName={snapshotData?.company_name}
+        lastPrice={snapshotData?.last_price}
+        priceChange={snapshotData?.last_price_change}
+        priceChangePct={snapshotData?.last_price_change_pct}
+        dayBias={snapshotData?.day_bias}
+        session={session}
+        connected={connected}
+        lastUpdate={lastUpdate}
+        loading={loading}
+      />
 
       {/* 3-Column Layout */}
       <div className="p-4">
