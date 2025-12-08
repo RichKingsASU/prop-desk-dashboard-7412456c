@@ -1,6 +1,8 @@
+import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { TrendingUp, TrendingDown, Wallet, Zap } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, Zap, Settings } from "lucide-react";
 
 interface VitalsBarProps {
   equity: number;
@@ -84,6 +86,14 @@ export const VitalsBar = ({
             </div>
           </div>
         </div>
+
+        {/* Developer Link */}
+        <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground">
+          <Link to="/developer">
+            <Settings className="h-4 w-4 mr-1.5" />
+            Dev
+          </Link>
+        </Button>
       </div>
     </Card>
   );
