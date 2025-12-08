@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import F1Dashboard from "./pages/F1Dashboard";
 import Console from "./pages/Console";
 import Options from "./pages/Options";
+import Developer from "./pages/Developer";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/legacy" element={<Index />} />
             <Route path="/console/:symbol" element={<Console />} />
             <Route path="/options" element={<Options />} />
+            <Route path="/developer" element={<Developer />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
