@@ -12,6 +12,7 @@ import { DebugConsole } from '@/components/developer/DebugConsole';
 import { SystemControls } from '@/components/developer/SystemControls';
 import { StreamManager } from '@/components/developer/StreamManager';
 import { AlpacaStreamManager } from '@/components/developer/AlpacaStreamManager';
+import LiveQuotesWidget from '@/components/test/LiveQuotesWidget';
 
 const DeveloperHeader = () => {
   const { getAggregateStats } = useDataStreams();
@@ -89,7 +90,10 @@ const DeveloperContent = () => {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          <StreamMetricsChart />
+          <div className="grid lg:grid-cols-2 gap-6">
+            <StreamMetricsChart />
+            <LiveQuotesWidget />
+          </div>
           <DataFreshnessGrid />
         </TabsContent>
 
