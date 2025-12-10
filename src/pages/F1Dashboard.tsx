@@ -10,7 +10,7 @@ import { DashboardHeader } from "@/components/DashboardHeader";
 import { OptionsChain } from "@/components/OptionsChain";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useLiveWatchlist } from "@/hooks/useLiveWatchlist";
-
+import { useLivePrice } from "@/hooks/useLivePrice";
 const F1Dashboard = () => {
   const navigate = useNavigate();
   const [currentSymbol, setCurrentSymbol] = useState("SPY");
@@ -18,7 +18,10 @@ const F1Dashboard = () => {
   const [splitMode, setSplitMode] = useState(false);
   const { layout } = useLayout();
   const { watchlist, loading: watchlistLoading, isLive } = useLiveWatchlist();
-
+  
+  // Get live prices for current symbols
+  const primaryPrice = useLivePrice(currentSymbol);
+  const secondaryPrice = useLivePrice(secondSymbol);
   // Dynamic snapshot data for indicator cards
   const [snapshotData, setSnapshotData] = useState({
     rsi_14: 64,
@@ -95,20 +98,21 @@ const F1Dashboard = () => {
     maxBuyingPower: 250000.00,
   };
 
+  // Chart data - use live prices if available, fallback to mock
   const chartData = {
     symbol: currentSymbol,
-    currentPrice: 432.15,
-    change: 1.23,
-    changePct: 0.29,
+    currentPrice: primaryPrice.isLive ? primaryPrice.price : 432.15,
+    change: primaryPrice.isLive ? primaryPrice.change : 1.23,
+    changePct: primaryPrice.isLive ? primaryPrice.changePct : 0.29,
     openPnL: 165.00,
     positionSize: 10,
   };
 
   const secondChartData = {
     symbol: secondSymbol,
-    currentPrice: 389.50,
-    change: -0.85,
-    changePct: -0.22,
+    currentPrice: secondaryPrice.isLive ? secondaryPrice.price : 389.50,
+    change: secondaryPrice.isLive ? secondaryPrice.change : -0.85,
+    changePct: secondaryPrice.isLive ? secondaryPrice.changePct : -0.22,
     openPnL: -45.00,
     positionSize: 5,
   };
