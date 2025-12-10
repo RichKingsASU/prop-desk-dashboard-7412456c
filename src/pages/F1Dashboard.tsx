@@ -9,6 +9,7 @@ import { IndicatorStrip } from "@/components/f1/IndicatorStrip";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { OptionsChain } from "@/components/OptionsChain";
 import { useLayout } from "@/contexts/LayoutContext";
+import { useLiveWatchlist } from "@/hooks/useLiveWatchlist";
 
 const F1Dashboard = () => {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ const F1Dashboard = () => {
   const [secondSymbol, setSecondSymbol] = useState("QQQ");
   const [splitMode, setSplitMode] = useState(false);
   const { layout } = useLayout();
+  const { watchlist, loading: watchlistLoading, isLive } = useLiveWatchlist();
 
   // Dynamic snapshot data for indicator cards
   const [snapshotData, setSnapshotData] = useState({
@@ -177,6 +179,9 @@ const F1Dashboard = () => {
         {layout.showWatchlist && (
           <div className="col-span-2 animate-fade-in">
             <WatchlistTower 
+              items={watchlist}
+              loading={watchlistLoading}
+              isLive={isLive}
               onSymbolClick={setCurrentSymbol}
               onSymbolDoubleClick={handleOpenConsole}
             />
