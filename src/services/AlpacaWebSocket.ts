@@ -96,6 +96,8 @@ class AlpacaWebSocket {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10;
   private isAuthenticated = false;
+  private isMockMode = false;
+  private mockServer: typeof import('./MockAlpacaServer').mockAlpacaServer | null = null;
 
   connect(credentials: AlpacaCredentials, feedType: AlpacaFeedType = 'iex'): void {
     this.credentials = credentials;
@@ -293,6 +295,12 @@ class AlpacaWebSocket {
       this.reconnectTimeout = null;
     }
 
+    if (this.isMockMode && this.mockServer) {
+      this.mockServer.stop();
+      this.mockServer = null;
+      this.isMockMode = false;
+    }
+
     if (this.socket) {
       this.socket.close(1000, 'Client disconnect');
       this.socket = null;
@@ -301,6 +309,91 @@ class AlpacaWebSocket {
     this.isAuthenticated = false;
     this.subscriptions = {};
     this.notifyStatus('disconnected');
+  }
+
+  // Connect in mock/demo mode - no real credentials needed
+  async connectMock(): Promise<void> {
+    this.isMockMode = true;
+    this.reconnectAttempts = 0;
+    this.isAuthenticated = false;
+
+    this.notifyStatus('connecting');
+
+    // Dynamically import mock server to avoid bundling when not used
+    const { mockAlpacaServer } = await import('./MockAlpacaServer');
+    this.mockServer = mockAlpacaServer;
+
+    // Start mock server with message handler
+    this.mockServer.start((messages) => {
+      this.handleMockMessages(messages);
+    });
+
+    // Trigger authentication
+    setTimeout(() => {
+      this.notifyStatus('authenticating');
+      this.mockServer?.authenticate();
+    }, 100);
+  }
+
+  private handleMockMessages(messages: any[]): void {
+    for (const msg of messages) {
+      switch (msg.T) {
+        case 'success':
+          if (msg.msg === 'connected') {
+            console.log('[Alpaca Mock] Connected');
+          } else if (msg.msg === 'authenticated') {
+            console.log('[Alpaca Mock] Authenticated');
+            this.isAuthenticated = true;
+            this.notifyStatus('authenticated');
+            
+            // Auto-subscribe if we have pending subscriptions
+            if (Object.keys(this.subscriptions).length > 0) {
+              this.mockServer?.subscribe(
+                this.subscriptions.trades || [],
+                this.subscriptions.quotes || [],
+                this.subscriptions.bars || []
+              );
+            }
+          }
+          break;
+
+        case 'subscription':
+          console.log('[Alpaca Mock] Subscribed:', msg);
+          this.notifyStatus('subscribed');
+          break;
+
+        case 't': // Trade
+        case 'q': // Quote
+        case 'b': // Bar
+          this.notifyMessage(msg as AlpacaMessage);
+          break;
+      }
+    }
+  }
+
+  subscribeMock(subscription: AlpacaSubscription): void {
+    this.subscriptions = {
+      trades: [...(this.subscriptions.trades || []), ...(subscription.trades || [])],
+      quotes: [...(this.subscriptions.quotes || []), ...(subscription.quotes || [])],
+      bars: [...(this.subscriptions.bars || []), ...(subscription.bars || [])]
+    };
+
+    // Remove duplicates
+    this.subscriptions.trades = [...new Set(this.subscriptions.trades)];
+    this.subscriptions.quotes = [...new Set(this.subscriptions.quotes)];
+    this.subscriptions.bars = [...new Set(this.subscriptions.bars)];
+
+    if (this.isMockMode && this.isAuthenticated && this.mockServer) {
+      this.mockServer.subscribe(
+        subscription.trades || [],
+        subscription.quotes || [],
+        subscription.bars || []
+      );
+    }
+  }
+
+  isMock(): boolean {
+    return this.isMockMode;
   }
 
   onMessage(handler: MessageHandler): () => void {
@@ -328,6 +421,9 @@ class AlpacaWebSocket {
   }
 
   isConnected(): boolean {
+    if (this.isMockMode) {
+      return this.isAuthenticated && (this.mockServer?.isActive() ?? false);
+    }
     return this.socket?.readyState === WebSocket.OPEN && this.isAuthenticated;
   }
 

@@ -35,6 +35,7 @@ export const AlpacaStreamManager = () => {
   const { updateExchangeStatus } = useExchanges();
   
   const [isExpanded, setIsExpanded] = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [secretKey, setSecretKey] = useState('');
   const [feedType, setFeedType] = useState<AlpacaFeedType>('iex');
@@ -86,22 +87,22 @@ export const AlpacaStreamManager = () => {
     };
   }, [recordMessage, updateStreamStatus, updateExchangeStatus]);
 
-  const handleConnect = () => {
-    if (!apiKey || !secretKey) {
-      toast.error('Please enter your Alpaca API credentials');
-      return;
-    }
-
+  const handleConnect = async () => {
     const symbolList = symbols.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
     if (symbolList.length === 0) {
       toast.error('Please enter at least one symbol');
       return;
     }
 
+    if (!demoMode && (!apiKey || !secretKey)) {
+      toast.error('Please enter your Alpaca API credentials or enable Demo Mode');
+      return;
+    }
+
     // Register the stream in context
     registerStream({
       id: streamId,
-      name: 'Alpaca Live',
+      name: demoMode ? 'Alpaca Demo' : 'Alpaca Live',
       type: 'price',
       exchange: 'alpaca',
       symbols: symbolList,
@@ -110,32 +111,56 @@ export const AlpacaStreamManager = () => {
       latencyMs: 0,
       lastError: null,
       connectedAt: null,
-      isReal: true,
-      url: `wss://stream.data.alpaca.markets/v2/${feedType}`
+      isReal: !demoMode,
+      url: demoMode ? 'mock://alpaca-demo' : `wss://stream.data.alpaca.markets/v2/${feedType}`
     });
 
-    // Connect to Alpaca
-    alpacaWs.connect({ apiKey, secretKey }, feedType);
+    if (demoMode) {
+      // Connect using mock server
+      await alpacaWs.connectMock();
+      
+      // Wait for authentication then subscribe
+      const checkAuth = setInterval(() => {
+        if (alpacaWs.isConnected()) {
+          clearInterval(checkAuth);
+          
+          const subscription: any = {};
+          if (subscribeTrades) subscription.trades = symbolList;
+          if (subscribeQuotes) subscription.quotes = symbolList;
+          if (subscribeBars) subscription.bars = symbolList;
+          
+          alpacaWs.subscribeMock(subscription);
+          toast.success('Demo Mode Connected', {
+            description: `Streaming simulated data for ${symbolList.join(', ')}`
+          });
+        }
+      }, 100);
 
-    // Wait for authentication then subscribe
-    const checkAuth = setInterval(() => {
-      if (alpacaWs.isConnected()) {
-        clearInterval(checkAuth);
-        
-        const subscription: any = {};
-        if (subscribeTrades) subscription.trades = symbolList;
-        if (subscribeQuotes) subscription.quotes = symbolList;
-        if (subscribeBars) subscription.bars = symbolList;
-        
-        alpacaWs.subscribe(subscription);
-        toast.success('Connected to Alpaca', {
-          description: `Subscribed to ${symbolList.join(', ')}`
-        });
-      }
-    }, 100);
+      setTimeout(() => clearInterval(checkAuth), 5000);
+    } else {
+      // Connect to real Alpaca
+      alpacaWs.connect({ apiKey, secretKey }, feedType);
 
-    // Timeout after 10 seconds
-    setTimeout(() => clearInterval(checkAuth), 10000);
+      // Wait for authentication then subscribe
+      const checkAuth = setInterval(() => {
+        if (alpacaWs.isConnected()) {
+          clearInterval(checkAuth);
+          
+          const subscription: any = {};
+          if (subscribeTrades) subscription.trades = symbolList;
+          if (subscribeQuotes) subscription.quotes = symbolList;
+          if (subscribeBars) subscription.bars = symbolList;
+          
+          alpacaWs.subscribe(subscription);
+          toast.success('Connected to Alpaca', {
+            description: `Subscribed to ${symbolList.join(', ')}`
+          });
+        }
+      }, 100);
+
+      // Timeout after 10 seconds
+      setTimeout(() => clearInterval(checkAuth), 10000);
+    }
   };
 
   const handleDisconnect = () => {
@@ -217,66 +242,92 @@ export const AlpacaStreamManager = () => {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Credentials */}
-        <div className="space-y-3 p-3 rounded-lg bg-muted/30 border">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <Shield className="h-4 w-4" />
-            API Credentials
-          </div>
-          
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs">API Key ID</Label>
-              <Input
-                type="password"
-                placeholder="PKXXXXXXXXXXXXXXXX"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                disabled={isConnected}
-                className="font-mono text-sm"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Secret Key</Label>
-              <Input
-                type="password"
-                placeholder="••••••••••••••••"
-                value={secretKey}
-                onChange={(e) => setSecretKey(e.target.value)}
-                disabled={isConnected}
-                className="font-mono text-sm"
-              />
+        {/* Demo Mode Toggle */}
+        <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/20">
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-primary" />
+            <div>
+              <Label htmlFor="demo-mode" className="font-medium cursor-pointer">Demo Mode</Label>
+              <p className="text-xs text-muted-foreground">Use simulated data - no credentials needed</p>
             </div>
           </div>
-
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <AlertTriangle className="h-3 w-3" />
-            Keys are stored in memory only. Get free keys at <a href="https://alpaca.markets" target="_blank" rel="noopener" className="underline">alpaca.markets</a>
-          </p>
+          <div className="flex items-center gap-2">
+            {demoMode && (
+              <Badge className="bg-primary text-primary-foreground">DEMO</Badge>
+            )}
+            <Switch 
+              id="demo-mode" 
+              checked={demoMode} 
+              onCheckedChange={setDemoMode}
+              disabled={isConnected}
+            />
+          </div>
         </div>
 
-        {/* Feed Type */}
-        <div className="space-y-2">
-          <Label>Data Feed</Label>
-          <Select value={feedType} onValueChange={(v) => setFeedType(v as AlpacaFeedType)} disabled={isConnected}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {FEED_OPTIONS.map(opt => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  <div className="flex items-center gap-2">
-                    <span>{opt.label}</span>
-                    {opt.free && <Badge variant="secondary" className="text-xs py-0">Free</Badge>}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            {FEED_OPTIONS.find(f => f.value === feedType)?.description}
-          </p>
-        </div>
+        {/* Credentials - hidden in demo mode */}
+        {!demoMode && (
+          <div className="space-y-3 p-3 rounded-lg bg-muted/30 border">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Shield className="h-4 w-4" />
+              API Credentials
+            </div>
+            
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">API Key ID</Label>
+                <Input
+                  type="password"
+                  placeholder="PKXXXXXXXXXXXXXXXX"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  disabled={isConnected}
+                  className="font-mono text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Secret Key</Label>
+                <Input
+                  type="password"
+                  placeholder="••••••••••••••••"
+                  value={secretKey}
+                  onChange={(e) => setSecretKey(e.target.value)}
+                  disabled={isConnected}
+                  className="font-mono text-sm"
+                />
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              Keys are stored in memory only. Get free keys at <a href="https://alpaca.markets" target="_blank" rel="noopener" className="underline">alpaca.markets</a>
+            </p>
+          </div>
+        )}
+
+        {/* Feed Type - hidden in demo mode */}
+        {!demoMode && (
+          <div className="space-y-2">
+            <Label>Data Feed</Label>
+            <Select value={feedType} onValueChange={(v) => setFeedType(v as AlpacaFeedType)} disabled={isConnected}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {FEED_OPTIONS.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    <div className="flex items-center gap-2">
+                      <span>{opt.label}</span>
+                      {opt.free && <Badge variant="secondary" className="text-xs py-0">Free</Badge>}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {FEED_OPTIONS.find(f => f.value === feedType)?.description}
+            </p>
+          </div>
+        )}
 
         {/* Symbols */}
         <div className="space-y-2">
