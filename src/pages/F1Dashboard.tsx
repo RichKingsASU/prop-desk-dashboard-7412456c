@@ -106,6 +106,7 @@ const F1Dashboard = () => {
     changePct: primaryPrice.isLive ? primaryPrice.changePct : 0.29,
     openPnL: 165.00,
     positionSize: 10,
+    isLive: primaryPrice.isLive,
   };
 
   const secondChartData = {
@@ -115,6 +116,7 @@ const F1Dashboard = () => {
     changePct: secondaryPrice.isLive ? secondaryPrice.changePct : -0.22,
     openPnL: -45.00,
     positionSize: 5,
+    isLive: secondaryPrice.isLive,
   };
 
   // Dynamic grid layout based on visible components

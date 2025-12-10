@@ -3,7 +3,7 @@ import { TradingViewChart } from "@/components/TradingViewChart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowUp, ArrowDown, Maximize2 } from "lucide-react";
+import { ArrowUp, ArrowDown, Maximize2, Radio } from "lucide-react";
 
 interface TelemetryChartProps {
   symbol: string;
@@ -13,6 +13,7 @@ interface TelemetryChartProps {
   openPnL?: number;
   positionSize?: number;
   onOpenConsole?: () => void;
+  isLive?: boolean;
 }
 
 export const TelemetryChart = ({
@@ -23,6 +24,7 @@ export const TelemetryChart = ({
   openPnL,
   positionSize,
   onOpenConsole,
+  isLive,
 }: TelemetryChartProps) => {
   const hasPosition = openPnL !== undefined && positionSize !== undefined && positionSize > 0;
   const isProfitable = (openPnL || 0) >= 0;
@@ -44,6 +46,16 @@ export const TelemetryChart = ({
             {changePct >= 0 ? <ArrowUp className="h-3 w-3 mr-1 inline" /> : <ArrowDown className="h-3 w-3 mr-1 inline" />}
             {change >= 0 ? "+" : ""}{change.toFixed(2)} ({changePct >= 0 ? "+" : ""}{changePct.toFixed(2)}%)
           </Badge>
+          {isLive ? (
+            <Badge className="bg-bull/20 text-bull border border-bull/30 text-[10px] px-1.5 py-0.5 animate-pulse">
+              <Radio className="h-2.5 w-2.5 mr-1" />
+              LIVE
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 opacity-60">
+              DEMO
+            </Badge>
+          )}
           {onOpenConsole && (
             <Tooltip>
               <TooltipTrigger asChild>
