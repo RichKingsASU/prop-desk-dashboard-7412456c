@@ -13,6 +13,7 @@ import Console from "./pages/Console";
 import Options from "./pages/Options";
 import Developer from "./pages/Developer";
 import Auth from "./pages/Auth";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import TestHub from "./pages/test/TestHub";
 import SupabaseDashboard from "./pages/test/SupabaseDashboard";
@@ -32,6 +33,7 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<F1Dashboard />} />
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/settings" element={<Settings />} />
                   <Route path="/legacy" element={<Index />} />
                   <Route path="/console/:symbol" element={<Console />} />
                   <Route path="/options" element={<Options />} />
