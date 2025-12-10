@@ -11,6 +11,7 @@ import { StreamMetricsChart } from '@/components/developer/StreamMetricsChart';
 import { DebugConsole } from '@/components/developer/DebugConsole';
 import { SystemControls } from '@/components/developer/SystemControls';
 import { StreamManager } from '@/components/developer/StreamManager';
+import { AlpacaStreamManager } from '@/components/developer/AlpacaStreamManager';
 
 const DeveloperHeader = () => {
   const { getAggregateStats } = useDataStreams();
@@ -97,7 +98,10 @@ const DeveloperContent = () => {
         </TabsContent>
 
         <TabsContent value="streams" className="space-y-6">
-          <StreamManager />
+          <div className="grid md:grid-cols-2 gap-4">
+            <AlpacaStreamManager />
+            <StreamManager />
+          </div>
           <DataStreamPanel />
         </TabsContent>
 
