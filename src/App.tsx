@@ -11,6 +11,8 @@ import Console from "./pages/Console";
 import Options from "./pages/Options";
 import Developer from "./pages/Developer";
 import NotFound from "./pages/NotFound";
+import TestHub from "./pages/test/TestHub";
+import SupabaseDashboard from "./pages/test/SupabaseDashboard";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +30,8 @@ const App = () => (
             <Route path="/console/:symbol" element={<Console />} />
             <Route path="/options" element={<Options />} />
             <Route path="/developer" element={<Developer />} />
+            <Route path="/test" element={<TestHub />} />
+            <Route path="/test/supabase-dashboard" element={<SupabaseDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
