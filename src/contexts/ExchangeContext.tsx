@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export type ExchangeType = 'broker' | 'data-provider' | 'options-exchange';
 export type ExchangeStatus = 'active' | 'inactive' | 'degraded' | 'maintenance';
@@ -23,6 +24,8 @@ export interface Exchange {
   lastHealthCheck: Date;
   latencyMs: number;
   errorRate: number;
+  isFromDatabase?: boolean;
+  brokerAccountId?: string;
 }
 
 interface ExchangeContextType {
@@ -35,6 +38,7 @@ interface ExchangeContextType {
   getExchangeById: (id: string) => Exchange | undefined;
   getExchangesByType: (type: ExchangeType) => Exchange[];
   getOverallHealth: () => { healthy: number; degraded: number; down: number };
+  isLoading: boolean;
 }
 
 const ExchangeContext = createContext<ExchangeContextType | null>(null);
@@ -45,129 +49,149 @@ export const useExchanges = () => {
   return context;
 };
 
+// Reference data providers (not from database)
+const REFERENCE_PROVIDERS: Exchange[] = [
+  {
+    id: 'polygon',
+    name: 'polygon',
+    displayName: 'Polygon.io',
+    type: 'data-provider',
+    status: 'inactive',
+    apiVersion: 'v3',
+    rateLimits: { requestsPerMinute: 500, requestsUsed: 0, resetTime: new Date() },
+    capabilities: ['equities', 'options', 'crypto'],
+    streams: [],
+    lastHealthCheck: new Date(),
+    latencyMs: 0,
+    errorRate: 0,
+    isFromDatabase: false
+  },
+  {
+    id: 'alpaca',
+    name: 'alpaca',
+    displayName: 'Alpaca Markets',
+    type: 'data-provider',
+    status: 'inactive',
+    apiVersion: 'v2',
+    rateLimits: { requestsPerMinute: 200, requestsUsed: 0, resetTime: new Date() },
+    capabilities: ['equities', 'crypto'],
+    streams: [],
+    lastHealthCheck: new Date(),
+    latencyMs: 0,
+    errorRate: 0,
+    isFromDatabase: false
+  },
+  {
+    id: 'supabase',
+    name: 'supabase',
+    displayName: 'Supabase (Database)',
+    type: 'data-provider',
+    status: 'active',
+    apiVersion: 'v1',
+    rateLimits: { requestsPerMinute: 1000, requestsUsed: 0, resetTime: new Date() },
+    capabilities: ['equities', 'options'],
+    streams: ['supabase-market-data', 'supabase-quotes', 'supabase-news', 'supabase-options-flow'],
+    lastHealthCheck: new Date(),
+    latencyMs: 15,
+    errorRate: 0,
+    isFromDatabase: false
+  }
+];
+
 export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize with mock exchanges
+  // Load broker accounts from Supabase
   useEffect(() => {
-    const mockExchanges: Exchange[] = [
-      {
-        id: 'polygon',
-        name: 'polygon',
-        displayName: 'Polygon.io',
-        type: 'data-provider',
-        status: 'active',
-        apiVersion: 'v3',
-        rateLimits: { requestsPerMinute: 500, requestsUsed: 245, resetTime: new Date(Date.now() + 45000) },
-        capabilities: ['equities', 'options', 'crypto'],
-        streams: ['price-polygon', 'level2-polygon'],
-        lastHealthCheck: new Date(),
-        latencyMs: 8,
-        errorRate: 0.001
-      },
-      {
-        id: 'tda',
-        name: 'tda',
-        displayName: 'TD Ameritrade',
-        type: 'broker',
-        status: 'active',
-        apiVersion: 'v1',
-        rateLimits: { requestsPerMinute: 120, requestsUsed: 45, resetTime: new Date(Date.now() + 30000) },
-        capabilities: ['equities', 'options'],
-        streams: ['account-tda'],
-        lastHealthCheck: new Date(),
-        latencyMs: 45,
-        errorRate: 0.005
-      },
-      {
-        id: 'opra',
-        name: 'opra',
-        displayName: 'OPRA (Options)',
-        type: 'options-exchange',
-        status: 'active',
-        apiVersion: 'v2',
-        rateLimits: { requestsPerMinute: 1000, requestsUsed: 320, resetTime: new Date(Date.now() + 40000) },
-        capabilities: ['options'],
-        streams: ['options-opra'],
-        lastHealthCheck: new Date(),
-        latencyMs: 15,
-        errorRate: 0.002
-      },
-      {
-        id: 'benzinga',
-        name: 'benzinga',
-        displayName: 'Benzinga News',
-        type: 'data-provider',
-        status: 'degraded',
-        apiVersion: 'v1',
-        rateLimits: { requestsPerMinute: 60, requestsUsed: 58, resetTime: new Date(Date.now() + 15000) },
-        capabilities: ['equities'],
-        streams: ['news-benzinga'],
-        lastHealthCheck: new Date(Date.now() - 5000),
-        latencyMs: 120,
-        errorRate: 0.05
-      },
-      {
-        id: 'ibkr',
-        name: 'ibkr',
-        displayName: 'Interactive Brokers',
-        type: 'broker',
-        status: 'inactive',
-        apiVersion: 'v1',
-        rateLimits: { requestsPerMinute: 100, requestsUsed: 0, resetTime: new Date() },
-        capabilities: ['equities', 'options', 'futures'],
-        streams: [],
-        lastHealthCheck: new Date(Date.now() - 60000),
-        latencyMs: 0,
-        errorRate: 0
-      },
-      {
-        id: 'cboe',
-        name: 'cboe',
-        displayName: 'CBOE',
-        type: 'options-exchange',
-        status: 'maintenance',
-        apiVersion: 'v3',
-        rateLimits: { requestsPerMinute: 500, requestsUsed: 0, resetTime: new Date() },
-        capabilities: ['options'],
-        streams: [],
-        lastHealthCheck: new Date(Date.now() - 300000),
-        latencyMs: 0,
-        errorRate: 0
-      },
-      {
-        id: 'alpaca',
-        name: 'alpaca',
-        displayName: 'Alpaca Markets',
-        type: 'data-provider',
-        status: 'inactive',
-        apiVersion: 'v2',
-        rateLimits: { requestsPerMinute: 200, requestsUsed: 0, resetTime: new Date() },
-        capabilities: ['equities', 'crypto'],
-        streams: [],
-        lastHealthCheck: new Date(),
-        latencyMs: 0,
-        errorRate: 0
+    const loadBrokerAccounts = async () => {
+      try {
+        const { data: brokerAccounts, error } = await supabase
+          .from('broker_accounts')
+          .select('*');
+
+        if (error) {
+          console.error('Error loading broker accounts:', error);
+          // Fall back to reference providers only
+          setExchanges(REFERENCE_PROVIDERS);
+          return;
+        }
+
+        // Map broker accounts to Exchange format
+        const brokerExchanges: Exchange[] = (brokerAccounts || []).map(account => ({
+          id: `broker-${account.id}`,
+          name: account.broker_name,
+          displayName: `${account.broker_name.charAt(0).toUpperCase() + account.broker_name.slice(1)} ${account.is_paper_trading ? '(Paper)' : '(Live)'} - ${account.account_label}`,
+          type: 'broker' as ExchangeType,
+          status: 'active' as ExchangeStatus, // Assume active if in database
+          apiVersion: 'v1',
+          rateLimits: { 
+            requestsPerMinute: 120, 
+            requestsUsed: 0, 
+            resetTime: new Date() 
+          },
+          capabilities: account.broker_name === 'tastytrade' 
+            ? ['equities', 'options'] as Capability[]
+            : ['equities', 'crypto'] as Capability[],
+          streams: [],
+          lastHealthCheck: new Date(account.updated_at),
+          latencyMs: 0,
+          errorRate: 0,
+          isFromDatabase: true,
+          brokerAccountId: account.id
+        }));
+
+        // Combine database brokers with reference providers
+        setExchanges([...brokerExchanges, ...REFERENCE_PROVIDERS]);
+      } catch (error) {
+        console.error('Error in loadBrokerAccounts:', error);
+        setExchanges(REFERENCE_PROVIDERS);
+      } finally {
+        setIsLoading(false);
       }
-    ];
-    setExchanges(mockExchanges);
+    };
+
+    loadBrokerAccounts();
+
+    // Subscribe to broker_accounts changes
+    const channel = supabase
+      .channel('broker-accounts-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'broker_accounts' },
+        () => {
+          // Reload broker accounts when changes occur
+          loadBrokerAccounts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  // Simulate periodic health checks
+  // Periodic health check for Supabase connection
   useEffect(() => {
-    const interval = setInterval(() => {
-      setExchanges(prev => prev.map(ex => ({
-        ...ex,
-        lastHealthCheck: ex.status === 'active' || ex.status === 'degraded' ? new Date() : ex.lastHealthCheck,
-        latencyMs: ex.status === 'active' ? ex.latencyMs + (Math.random() - 0.5) * 4 : ex.latencyMs,
-        rateLimits: {
-          ...ex.rateLimits,
-          requestsUsed: ex.status === 'active' 
-            ? Math.min(ex.rateLimits.requestsPerMinute, ex.rateLimits.requestsUsed + Math.floor(Math.random() * 5))
-            : ex.rateLimits.requestsUsed
+    const interval = setInterval(async () => {
+      // Test Supabase connection
+      const start = Date.now();
+      const { error } = await supabase.from('live_quotes').select('symbol').limit(1);
+      const latency = Date.now() - start;
+
+      setExchanges(prev => prev.map(ex => {
+        if (ex.id === 'supabase') {
+          return {
+            ...ex,
+            status: error ? 'degraded' : 'active',
+            lastHealthCheck: new Date(),
+            latencyMs: latency,
+            errorRate: error ? 0.1 : 0
+          };
         }
-      })));
-    }, 5000);
+        return ex;
+      }));
+    }, 30000); // Check every 30 seconds
+
     return () => clearInterval(interval);
   }, []);
 
@@ -176,8 +200,12 @@ export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const removeExchange = useCallback((id: string) => {
+    // Don't allow removing database exchanges
+    const exchange = exchanges.find(e => e.id === id);
+    if (exchange?.isFromDatabase) return;
+    
     setExchanges(prev => prev.filter(e => e.id !== id));
-  }, []);
+  }, [exchanges]);
 
   const updateExchangeStatus = useCallback((id: string, status: ExchangeStatus) => {
     setExchanges(prev => prev.map(e => e.id === id ? { ...e, status, lastHealthCheck: new Date() } : e));
@@ -190,17 +218,60 @@ export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const testConnection = useCallback(async (id: string): Promise<boolean> => {
-    // Simulate connection test
+    const exchange = exchanges.find(e => e.id === id);
+    
+    // For Supabase, actually test the connection
+    if (exchange?.id === 'supabase') {
+      setExchanges(prev => prev.map(e => 
+        e.id === id ? { ...e, status: 'inactive' } : e
+      ));
+      
+      const start = Date.now();
+      const { error } = await supabase.from('live_quotes').select('symbol').limit(1);
+      const latency = Date.now() - start;
+      
+      const success = !error;
+      setExchanges(prev => prev.map(e => 
+        e.id === id ? { 
+          ...e, 
+          status: success ? 'active' : 'degraded', 
+          lastHealthCheck: new Date(),
+          latencyMs: latency
+        } : e
+      ));
+      return success;
+    }
+
+    // For database brokers, just verify the record exists
+    if (exchange?.isFromDatabase && exchange.brokerAccountId) {
+      const { data } = await supabase
+        .from('broker_accounts')
+        .select('id')
+        .eq('id', exchange.brokerAccountId)
+        .single();
+      
+      const success = !!data;
+      setExchanges(prev => prev.map(e => 
+        e.id === id ? { 
+          ...e, 
+          status: success ? 'active' : 'inactive', 
+          lastHealthCheck: new Date()
+        } : e
+      ));
+      return success;
+    }
+
+    // For reference providers, simulate connection test
     return new Promise(resolve => {
       setTimeout(() => {
-        const success = Math.random() > 0.1;
+        const success = Math.random() > 0.3; // 70% success rate for mock
         setExchanges(prev => prev.map(e => 
           e.id === id ? { ...e, status: success ? 'active' : 'inactive', lastHealthCheck: new Date() } : e
         ));
         resolve(success);
       }, 1000);
     });
-  }, []);
+  }, [exchanges]);
 
   const getExchangeById = useCallback((id: string) => exchanges.find(e => e.id === id), [exchanges]);
   
@@ -222,7 +293,8 @@ export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       testConnection,
       getExchangeById,
       getExchangesByType,
-      getOverallHealth
+      getOverallHealth,
+      isLoading
     }}>
       {children}
     </ExchangeContext.Provider>

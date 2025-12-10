@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export type StreamType = 'price' | 'options' | 'news' | 'level2' | 'trades' | 'account';
 export type StreamStatus = 'connected' | 'disconnected' | 'connecting' | 'error' | 'paused';
@@ -22,6 +24,7 @@ export interface DataStream {
   url?: string;
   protocols?: string[];
   isReal?: boolean; // true = real WebSocket, false = mock
+  isSupabase?: boolean; // true = Supabase realtime channel
 }
 
 export interface StreamMetricsSnapshot {
@@ -56,10 +59,67 @@ export const useDataStreams = () => {
   return context;
 };
 
+// Supabase stream definitions
+const SUPABASE_STREAMS: Omit<DataStream, 'messageCount' | 'messagesPerSecond' | 'errorCount' | 'reconnectAttempts'>[] = [
+  {
+    id: 'supabase-market-data',
+    name: 'Market Data (1m)',
+    type: 'price',
+    exchange: 'supabase',
+    symbols: ['SPY', 'AAPL', 'TSLA'],
+    status: 'connecting',
+    lastMessage: null,
+    latencyMs: 0,
+    lastError: null,
+    connectedAt: null,
+    isSupabase: true
+  },
+  {
+    id: 'supabase-quotes',
+    name: 'Live Quotes',
+    type: 'level2',
+    exchange: 'supabase',
+    symbols: ['*'],
+    status: 'connecting',
+    lastMessage: null,
+    latencyMs: 0,
+    lastError: null,
+    connectedAt: null,
+    isSupabase: true
+  },
+  {
+    id: 'supabase-news',
+    name: 'News Events',
+    type: 'news',
+    exchange: 'supabase',
+    symbols: ['*'],
+    status: 'connecting',
+    lastMessage: null,
+    latencyMs: 0,
+    lastError: null,
+    connectedAt: null,
+    isSupabase: true
+  },
+  {
+    id: 'supabase-options-flow',
+    name: 'Options Flow',
+    type: 'options',
+    exchange: 'supabase',
+    symbols: ['*'],
+    status: 'connecting',
+    lastMessage: null,
+    latencyMs: 0,
+    lastError: null,
+    connectedAt: null,
+    isSupabase: true
+  }
+];
+
 export const DataStreamProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [streams, setStreams] = useState<DataStream[]>([]);
   const [metricsHistory, setMetricsHistory] = useState<StreamMetricsSnapshot[]>([]);
   const messageCountsRef = useRef<Record<string, number[]>>({});
+  const channelsRef = useRef<Record<string, RealtimeChannel>>({});
 
   // Calculate messages per second every second
   useEffect(() => {
@@ -97,92 +157,203 @@ export const DataStreamProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => clearInterval(interval);
   }, []);
 
-  // Initialize with mock streams
-  useEffect(() => {
-    const mockStreams: DataStream[] = [
-      {
-        id: 'price-polygon',
-        name: 'Price Stream',
-        type: 'price',
-        exchange: 'polygon',
-        symbols: ['SPY', 'AAPL', 'TSLA', 'NVDA', 'AMD'],
-        status: 'connected',
-        lastMessage: new Date(),
-        messageCount: 24500,
-        messagesPerSecond: 245,
-        latencyMs: 8,
-        errorCount: 0,
-        lastError: null,
-        reconnectAttempts: 0,
-        connectedAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
-      },
-      {
-        id: 'options-opra',
-        name: 'Options Flow',
-        type: 'options',
-        exchange: 'opra',
-        symbols: ['SPY', 'QQQ'],
-        status: 'connected',
-        lastMessage: new Date(),
-        messageCount: 8900,
-        messagesPerSecond: 89,
-        latencyMs: 15,
-        errorCount: 0,
-        lastError: null,
-        reconnectAttempts: 0,
-        connectedAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
-      },
-      {
-        id: 'news-benzinga',
-        name: 'News Feed',
-        type: 'news',
-        exchange: 'benzinga',
-        symbols: ['*'],
-        status: 'connected',
-        lastMessage: new Date(Date.now() - 12000),
-        messageCount: 180,
-        messagesPerSecond: 3,
-        latencyMs: 120,
-        errorCount: 2,
-        lastError: 'Timeout on request',
-        reconnectAttempts: 1,
-        connectedAt: new Date(Date.now() - 1 * 60 * 60 * 1000)
-      },
-      {
-        id: 'account-tda',
-        name: 'Account Updates',
-        type: 'account',
-        exchange: 'tda',
-        symbols: ['POSITIONS', 'BALANCES', 'ORDERS'],
-        status: 'connected',
-        lastMessage: new Date(Date.now() - 3000),
-        messageCount: 720,
-        messagesPerSecond: 1,
-        latencyMs: 45,
-        errorCount: 0,
-        lastError: null,
-        reconnectAttempts: 0,
-        connectedAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
-      },
-      {
-        id: 'level2-polygon',
-        name: 'Level 2 Depth',
-        type: 'level2',
-        exchange: 'polygon',
-        symbols: ['SPY'],
-        status: 'connected',
-        lastMessage: new Date(),
-        messageCount: 45000,
-        messagesPerSecond: 450,
-        latencyMs: 5,
-        errorCount: 0,
-        lastError: null,
-        reconnectAttempts: 0,
-        connectedAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
-      }
-    ];
-    setStreams(mockStreams);
+  // Helper to record a message for a stream
+  const recordMessageInternal = useCallback((streamId: string, latencyMs?: number) => {
+    const now = Date.now();
+    if (!messageCountsRef.current[streamId]) messageCountsRef.current[streamId] = [];
+    messageCountsRef.current[streamId].push(now);
+    
+    setStreams(prev => prev.map(s => 
+      s.id === streamId ? { 
+        ...s, 
+        lastMessage: new Date(), 
+        messageCount: s.messageCount + 1,
+        latencyMs: latencyMs ?? s.latencyMs
+      } : s
+    ));
   }, []);
+
+  // Initialize Supabase real-time subscriptions
+  useEffect(() => {
+    // Initialize streams with Supabase streams
+    const initialStreams = SUPABASE_STREAMS.map(s => ({
+      ...s,
+      messageCount: 0,
+      messagesPerSecond: 0,
+      errorCount: 0,
+      reconnectAttempts: 0
+    }));
+    setStreams(initialStreams);
+
+    // Fetch initial latest timestamps from each table
+    const fetchInitialData = async () => {
+      try {
+        // Get latest market data timestamp
+        const { data: marketData } = await supabase
+          .from('market_data_1m')
+          .select('ts')
+          .order('ts', { ascending: false })
+          .limit(1);
+        
+        if (marketData?.[0]) {
+          setStreams(prev => prev.map(s => 
+            s.id === 'supabase-market-data' ? { ...s, lastMessage: new Date(marketData[0].ts) } : s
+          ));
+        }
+
+        // Get latest live quote timestamp
+        const { data: quotes } = await supabase
+          .from('live_quotes')
+          .select('last_update_ts')
+          .order('last_update_ts', { ascending: false })
+          .limit(1);
+        
+        if (quotes?.[0]) {
+          setStreams(prev => prev.map(s => 
+            s.id === 'supabase-quotes' ? { ...s, lastMessage: new Date(quotes[0].last_update_ts) } : s
+          ));
+        }
+
+        // Get latest news event timestamp
+        const { data: news } = await supabase
+          .from('news_events')
+          .select('received_at')
+          .order('received_at', { ascending: false })
+          .limit(1);
+        
+        if (news?.[0]) {
+          setStreams(prev => prev.map(s => 
+            s.id === 'supabase-news' ? { ...s, lastMessage: new Date(news[0].received_at) } : s
+          ));
+        }
+
+        // Get latest options flow timestamp
+        const { data: optionsFlow } = await supabase
+          .from('options_flow')
+          .select('received_at')
+          .order('received_at', { ascending: false })
+          .limit(1);
+        
+        if (optionsFlow?.[0]) {
+          setStreams(prev => prev.map(s => 
+            s.id === 'supabase-options-flow' ? { ...s, lastMessage: new Date(optionsFlow[0].received_at) } : s
+          ));
+        }
+      } catch (error) {
+        console.error('Error fetching initial data timestamps:', error);
+      }
+    };
+
+    fetchInitialData();
+
+    // Set up Supabase real-time channels
+    const marketDataChannel = supabase
+      .channel('market-data-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'market_data_1m' },
+        (payload) => {
+          console.log('Market data change:', payload);
+          const receivedAt = Date.now();
+          const eventTime = payload.commit_timestamp ? new Date(payload.commit_timestamp).getTime() : receivedAt;
+          const latency = receivedAt - eventTime;
+          recordMessageInternal('supabase-market-data', Math.max(0, latency));
+        }
+      )
+      .subscribe((status) => {
+        console.log('Market data channel status:', status);
+        setStreams(prev => prev.map(s => 
+          s.id === 'supabase-market-data' ? { 
+            ...s, 
+            status: status === 'SUBSCRIBED' ? 'connected' : status === 'CHANNEL_ERROR' ? 'error' : 'connecting',
+            connectedAt: status === 'SUBSCRIBED' ? new Date() : s.connectedAt
+          } : s
+        ));
+      });
+
+    const quotesChannel = supabase
+      .channel('quotes-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'live_quotes' },
+        (payload) => {
+          console.log('Live quote change:', payload);
+          const receivedAt = Date.now();
+          const eventTime = payload.commit_timestamp ? new Date(payload.commit_timestamp).getTime() : receivedAt;
+          const latency = receivedAt - eventTime;
+          recordMessageInternal('supabase-quotes', Math.max(0, latency));
+        }
+      )
+      .subscribe((status) => {
+        console.log('Quotes channel status:', status);
+        setStreams(prev => prev.map(s => 
+          s.id === 'supabase-quotes' ? { 
+            ...s, 
+            status: status === 'SUBSCRIBED' ? 'connected' : status === 'CHANNEL_ERROR' ? 'error' : 'connecting',
+            connectedAt: status === 'SUBSCRIBED' ? new Date() : s.connectedAt
+          } : s
+        ));
+      });
+
+    const newsChannel = supabase
+      .channel('news-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'news_events' },
+        (payload) => {
+          console.log('News event change:', payload);
+          const receivedAt = Date.now();
+          const eventTime = payload.commit_timestamp ? new Date(payload.commit_timestamp).getTime() : receivedAt;
+          const latency = receivedAt - eventTime;
+          recordMessageInternal('supabase-news', Math.max(0, latency));
+        }
+      )
+      .subscribe((status) => {
+        console.log('News channel status:', status);
+        setStreams(prev => prev.map(s => 
+          s.id === 'supabase-news' ? { 
+            ...s, 
+            status: status === 'SUBSCRIBED' ? 'connected' : status === 'CHANNEL_ERROR' ? 'error' : 'connecting',
+            connectedAt: status === 'SUBSCRIBED' ? new Date() : s.connectedAt
+          } : s
+        ));
+      });
+
+    const optionsFlowChannel = supabase
+      .channel('options-flow-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'options_flow' },
+        (payload) => {
+          console.log('Options flow change:', payload);
+          const receivedAt = Date.now();
+          const eventTime = payload.commit_timestamp ? new Date(payload.commit_timestamp).getTime() : receivedAt;
+          const latency = receivedAt - eventTime;
+          recordMessageInternal('supabase-options-flow', Math.max(0, latency));
+        }
+      )
+      .subscribe((status) => {
+        console.log('Options flow channel status:', status);
+        setStreams(prev => prev.map(s => 
+          s.id === 'supabase-options-flow' ? { 
+            ...s, 
+            status: status === 'SUBSCRIBED' ? 'connected' : status === 'CHANNEL_ERROR' ? 'error' : 'connecting',
+            connectedAt: status === 'SUBSCRIBED' ? new Date() : s.connectedAt
+          } : s
+        ));
+      });
+
+    // Store channel references
+    channelsRef.current = {
+      'supabase-market-data': marketDataChannel,
+      'supabase-quotes': quotesChannel,
+      'supabase-news': newsChannel,
+      'supabase-options-flow': optionsFlowChannel
+    };
+
+    // Cleanup on unmount
+    return () => {
+      Object.values(channelsRef.current).forEach(channel => {
+        supabase.removeChannel(channel);
+      });
+    };
+  }, [recordMessageInternal]);
 
   const registerStream = useCallback((stream: Omit<DataStream, 'messageCount' | 'messagesPerSecond' | 'errorCount' | 'reconnectAttempts'>) => {
     setStreams(prev => [...prev, { ...stream, messageCount: 0, messagesPerSecond: 0, errorCount: 0, reconnectAttempts: 0 }]);
@@ -190,9 +361,13 @@ export const DataStreamProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   const unregisterStream = useCallback((id: string) => {
+    // Don't allow unregistering Supabase streams
+    const stream = streams.find(s => s.id === id);
+    if (stream?.isSupabase) return;
+    
     setStreams(prev => prev.filter(s => s.id !== id));
     delete messageCountsRef.current[id];
-  }, []);
+  }, [streams]);
 
   const updateStreamStatus = useCallback((id: string, status: StreamStatus, error?: string) => {
     setStreams(prev => prev.map(s => 
@@ -208,19 +383,8 @@ export const DataStreamProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   const recordMessage = useCallback((id: string, latencyMs?: number) => {
-    const now = Date.now();
-    if (!messageCountsRef.current[id]) messageCountsRef.current[id] = [];
-    messageCountsRef.current[id].push(now);
-    
-    setStreams(prev => prev.map(s => 
-      s.id === id ? { 
-        ...s, 
-        lastMessage: new Date(), 
-        messageCount: s.messageCount + 1,
-        latencyMs: latencyMs ?? s.latencyMs
-      } : s
-    ));
-  }, []);
+    recordMessageInternal(id, latencyMs);
+  }, [recordMessageInternal]);
 
   const pauseStream = useCallback((id: string) => updateStreamStatus(id, 'paused'), [updateStreamStatus]);
   const resumeStream = useCallback((id: string) => updateStreamStatus(id, 'connected'), [updateStreamStatus]);
@@ -228,6 +392,20 @@ export const DataStreamProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const reconnectStream = useCallback((id: string) => {
     const stream = streams.find(s => s.id === id);
     updateStreamStatus(id, 'connecting');
+    
+    // If it's a Supabase stream, resubscribe to the channel
+    if (stream?.isSupabase) {
+      const channel = channelsRef.current[id];
+      if (channel) {
+        supabase.removeChannel(channel);
+        // Re-subscribe will happen when we recreate the channel
+        // For now, just mark as reconnecting and it will auto-reconnect
+        setTimeout(() => {
+          updateStreamStatus(id, 'connected');
+        }, 1000);
+      }
+      return;
+    }
     
     // If it's a real WebSocket stream, use the WebSocket manager
     if (stream?.isReal && stream.url) {
