@@ -1,11 +1,11 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Sun, Moon, Columns2, BarChart3, Home, Terminal } from "lucide-react";
+import { Clock, Sun, Moon, Columns2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { LayoutControls } from "@/components/LayoutControls";
-import { useNavigate, useLocation } from "react-router-dom";
+import { SidebarToggle } from "@/layouts/MainLayout";
 
 interface DashboardHeaderProps {
   currentSymbol: string;
@@ -35,8 +35,6 @@ export const DashboardHeader = ({
   onSecondSymbolChange,
 }: DashboardHeaderProps) => {
   const { theme, toggleTheme } = useTheme();
-  const navigate = useNavigate();
-  const location = useLocation();
   const [timeToClose, setTimeToClose] = useState("");
   const [marketStatus, setMarketStatus] = useState<"open" | "closed">("open");
 
@@ -74,8 +72,9 @@ export const DashboardHeader = ({
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 backdrop-blur-md bg-card/80 shadow-lg">
       <div className="flex h-16 items-center justify-between px-6 gap-8">
-        {/* Left Section: Title + Environment Badge */}
+        {/* Left Section: Sidebar Toggle + Title + Environment Badge */}
         <div className="flex items-center gap-3 min-w-fit">
+          <SidebarToggle />
           <h1 className="text-lg font-bold tracking-tight ui-label">Pro Day Trading Dashboard</h1>
           <Badge
             className={
@@ -86,40 +85,6 @@ export const DashboardHeader = ({
           >
             {environment.toUpperCase()}
           </Badge>
-          
-          {/* Navigation Buttons */}
-          <div className="flex items-center gap-1 ml-4 border-l border-white/10 pl-4">
-            <Button
-              variant={location.pathname === "/" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => navigate("/")}
-              className="h-8 px-3"
-              title="F1 Dashboard"
-            >
-              <Home className="h-4 w-4 mr-1" />
-              <span className="text-xs">Dashboard</span>
-            </Button>
-            <Button
-              variant={location.pathname === "/options" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => navigate("/options")}
-              className="h-8 px-3"
-              title="Options Analysis Center"
-            >
-              <BarChart3 className="h-4 w-4 mr-1" />
-              <span className="text-xs">Options</span>
-            </Button>
-            <Button
-              variant={location.pathname.startsWith("/console") ? "default" : "ghost"}
-              size="sm"
-              onClick={() => navigate(`/console/${currentSymbol}`)}
-              className="h-8 px-3"
-              title="Decision Console"
-            >
-              <Terminal className="h-4 w-4 mr-1" />
-              <span className="text-xs">Console</span>
-            </Button>
-          </div>
           
           {/* Theme Toggle */}
           <Button
