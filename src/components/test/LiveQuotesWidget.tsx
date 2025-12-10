@@ -1,47 +1,11 @@
-import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Activity, Loader2, AlertCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-
-interface LiveQuote {
-  symbol: string;
-  bid_price: number | null;
-  ask_price: number | null;
-  last_trade_price: number | null;
-  last_update_ts: string;
-}
+import { useLiveQuotes } from "@/hooks/useLiveQuotes";
 
 const LiveQuotesWidget = () => {
-  const [quotes, setQuotes] = useState<LiveQuote[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastPoll, setLastPoll] = useState<Date | null>(null);
-
-  const fetchQuotes = async () => {
-    try {
-      const { data, error: fetchError } = await supabase
-        .from("live_quotes")
-        .select("symbol, bid_price, ask_price, last_trade_price, last_update_ts")
-        .order("symbol");
-
-      if (fetchError) throw fetchError;
-      setQuotes(data || []);
-      setError(null);
-      setLastPoll(new Date());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch quotes");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchQuotes();
-    const interval = setInterval(fetchQuotes, 2000);
-    return () => clearInterval(interval);
-  }, []);
+  const { quotes, loading, error } = useLiveQuotes();
 
   const formatPrice = (price: number | null) => 
     price !== null ? `$${price.toFixed(2)}` : "—";
@@ -58,7 +22,7 @@ const LiveQuotesWidget = () => {
             Live Quotes
           </CardTitle>
           <Badge variant="outline" className="text-xs">
-            Polling 2s {lastPoll && `• ${formatTime(lastPoll.toISOString())}`}
+            Real-time • {quotes.length} symbols
           </Badge>
         </div>
       </CardHeader>
@@ -75,7 +39,7 @@ const LiveQuotesWidget = () => {
           </div>
         ) : quotes.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            No quotes yet. Waiting for streaming pipeline to populate live_quotes table.
+            No quotes yet. Enable "Persist to Database" in Alpaca Stream Manager.
           </div>
         ) : (
           <Table>
