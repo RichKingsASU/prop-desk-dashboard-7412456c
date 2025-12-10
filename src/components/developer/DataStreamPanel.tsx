@@ -56,11 +56,21 @@ export const DataStreamPanel = () => {
                       <Badge variant="outline" className="text-xs">
                         {exchange?.displayName || stream.exchange}
                       </Badge>
+                      {stream.isReal && (
+                        <Badge variant="secondary" className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                          LIVE
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {stream.symbols.slice(0, 5).join(', ')}
                       {stream.symbols.length > 5 && ` +${stream.symbols.length - 5} more`}
                     </p>
+                    {stream.url && (
+                      <p className="text-xs text-muted-foreground font-mono truncate max-w-[200px]">
+                        {stream.url}
+                      </p>
+                    )}
                   </div>
                 </div>
 

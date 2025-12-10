@@ -18,6 +18,10 @@ export interface DataStream {
   lastError: string | null;
   reconnectAttempts: number;
   connectedAt: Date | null;
+  // New fields for real WebSocket connections
+  url?: string;
+  protocols?: string[];
+  isReal?: boolean; // true = real WebSocket, false = mock
 }
 
 export interface StreamMetricsSnapshot {
@@ -40,6 +44,8 @@ interface DataStreamContextType {
   pauseAll: () => void;
   resumeAll: () => void;
   getAggregateStats: () => { totalStreams: number; connected: number; errors: number; totalMps: number };
+  connectRealStream: (id: string, url: string, symbols: string[], protocols?: string[]) => void;
+  disconnectRealStream: (id: string) => void;
 }
 
 const DataStreamContext = createContext<DataStreamContextType | null>(null);
@@ -220,9 +226,19 @@ export const DataStreamProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const resumeStream = useCallback((id: string) => updateStreamStatus(id, 'connected'), [updateStreamStatus]);
   
   const reconnectStream = useCallback((id: string) => {
+    const stream = streams.find(s => s.id === id);
     updateStreamStatus(id, 'connecting');
-    setTimeout(() => updateStreamStatus(id, 'connected'), 1500);
-  }, [updateStreamStatus]);
+    
+    // If it's a real WebSocket stream, use the WebSocket manager
+    if (stream?.isReal && stream.url) {
+      import('@/services/WebSocketManager').then(({ wsManager }) => {
+        wsManager.reconnect(id);
+      });
+    } else {
+      // Mock reconnection
+      setTimeout(() => updateStreamStatus(id, 'connected'), 1500);
+    }
+  }, [streams, updateStreamStatus]);
 
   const reconnectAll = useCallback(() => {
     streams.forEach(s => reconnectStream(s.id));
@@ -245,6 +261,51 @@ export const DataStreamProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   }, [streams]);
 
+  const connectRealStream = useCallback((id: string, url: string, symbols: string[], protocols?: string[]) => {
+    import('@/services/WebSocketManager').then(({ wsManager }) => {
+      // Update stream to mark as real
+      setStreams(prev => prev.map(s => 
+        s.id === id ? { ...s, url, protocols, isReal: true } : s
+      ));
+
+      // Set up handlers
+      wsManager.onStatusChange(id, (status, error) => {
+        const streamStatus = status === 'connected' ? 'connected' : 
+                            status === 'connecting' ? 'connecting' :
+                            status === 'error' ? 'error' : 'disconnected';
+        updateStreamStatus(id, streamStatus, error);
+      });
+
+      wsManager.onMessage(id, (data, latencyMs) => {
+        recordMessage(id, latencyMs);
+      });
+
+      // Connect
+      wsManager.connect(id, {
+        url,
+        protocols,
+        reconnectInterval: 5000,
+        maxReconnectAttempts: 10
+      });
+
+      // Subscribe to symbols once connected
+      wsManager.onStatusChange(id, (status) => {
+        if (status === 'connected' && symbols.length > 0) {
+          wsManager.subscribe(id, symbols);
+        }
+      });
+    });
+  }, [updateStreamStatus, recordMessage]);
+
+  const disconnectRealStream = useCallback((id: string) => {
+    import('@/services/WebSocketManager').then(({ wsManager }) => {
+      wsManager.disconnect(id);
+      setStreams(prev => prev.map(s => 
+        s.id === id ? { ...s, isReal: false, url: undefined, protocols: undefined } : s
+      ));
+    });
+  }, []);
+
   return (
     <DataStreamContext.Provider value={{
       streams,
@@ -259,7 +320,9 @@ export const DataStreamProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       reconnectAll,
       pauseAll,
       resumeAll,
-      getAggregateStats
+      getAggregateStats,
+      connectRealStream,
+      disconnectRealStream
     }}>
       {children}
     </DataStreamContext.Provider>
