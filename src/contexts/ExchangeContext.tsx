@@ -134,6 +134,20 @@ export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         lastHealthCheck: new Date(Date.now() - 300000),
         latencyMs: 0,
         errorRate: 0
+      },
+      {
+        id: 'alpaca',
+        name: 'alpaca',
+        displayName: 'Alpaca Markets',
+        type: 'data-provider',
+        status: 'inactive',
+        apiVersion: 'v2',
+        rateLimits: { requestsPerMinute: 200, requestsUsed: 0, resetTime: new Date() },
+        capabilities: ['equities', 'crypto'],
+        streams: [],
+        lastHealthCheck: new Date(),
+        latencyMs: 0,
+        errorRate: 0
       }
     ];
     setExchanges(mockExchanges);
