@@ -8,9 +8,11 @@ import {
   Archive,
   Settings,
   User,
-  LogOut
+  LogOut,
+  LogIn
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
+import { useNavigate } from "react-router-dom";
 
 import {
   Sidebar,
@@ -27,6 +29,8 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/contexts/AuthContext";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const tradingRoutes = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -80,9 +84,31 @@ function NavItem({ item, collapsed }: NavItemProps) {
   return content;
 }
 
+function getInitials(name: string | null, email: string | null): string {
+  if (name) {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  }
+  if (email) {
+    return email.slice(0, 2).toUpperCase();
+  }
+  return "??";
+}
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const { user, profile, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -140,38 +166,72 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-3 w-full px-2 py-2 rounded-md hover:bg-sidebar-accent transition-colors">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                  AT
-                </AvatarFallback>
-              </Avatar>
-              {!collapsed && (
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-medium text-sidebar-foreground">Agent Trader</p>
-                  <p className="text-xs text-sidebar-foreground/60">Paper Trading</p>
-                </div>
-              )}
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start" className="w-56">
-            <DropdownMenuItem className="gap-2">
-              <User className="h-4 w-4" />
-              Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2">
-              <Settings className="h-4 w-4" />
-              Settings
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive">
-              <LogOut className="h-4 w-4" />
-              Log out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {loading ? (
+          <div className="flex items-center gap-3 px-2 py-2">
+            <Skeleton className="h-8 w-8 rounded-full" />
+            {!collapsed && (
+              <div className="flex-1">
+                <Skeleton className="h-4 w-24 mb-1" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            )}
+          </div>
+        ) : user ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-3 w-full px-2 py-2 rounded-md hover:bg-sidebar-accent transition-colors">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                    {getInitials(profile?.display_name ?? null, user.email ?? null)}
+                  </AvatarFallback>
+                </Avatar>
+                {!collapsed && (
+                  <div className="flex-1 text-left overflow-hidden">
+                    <p className="text-sm font-medium text-sidebar-foreground truncate">
+                      {profile?.display_name || user.email?.split("@")[0]}
+                    </p>
+                    <p className="text-xs text-sidebar-foreground/60 truncate">
+                      {profile?.trading_mode === "live" ? "Live Trading" : "Paper Trading"}
+                    </p>
+                  </div>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="start" className="w-56">
+              <DropdownMenuItem className="gap-2">
+                <User className="h-4 w-4" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2">
+                <Settings className="h-4 w-4" />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                className="gap-2 text-destructive focus:text-destructive"
+                onClick={handleSignOut}
+              >
+                <LogOut className="h-4 w-4" />
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <button 
+            onClick={() => navigate("/auth")}
+            className="flex items-center gap-3 w-full px-2 py-2 rounded-md hover:bg-sidebar-accent transition-colors"
+          >
+            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+              <LogIn className="h-4 w-4 text-muted-foreground" />
+            </div>
+            {!collapsed && (
+              <div className="flex-1 text-left">
+                <p className="text-sm font-medium text-sidebar-foreground">Sign In</p>
+                <p className="text-xs text-sidebar-foreground/60">Access your account</p>
+              </div>
+            )}
+          </button>
+        )}
       </SidebarFooter>
     </Sidebar>
   );
