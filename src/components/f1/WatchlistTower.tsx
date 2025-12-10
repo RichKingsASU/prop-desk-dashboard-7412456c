@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +80,9 @@ interface WatchlistTowerProps {
   onSymbolDoubleClick?: (symbol: string) => void;
 }
 
+// Track price flashes per symbol
+type FlashState = Record<string, "up" | "down" | null>;
+
 export const WatchlistTower = ({ 
   items,
   loading = false,
@@ -88,6 +92,42 @@ export const WatchlistTower = ({
 }: WatchlistTowerProps) => {
   const displayItems = items && items.length > 0 ? items : mockWatchlist;
   const showingMock = !items || items.length === 0;
+  
+  // Track previous prices and flash states
+  const prevPricesRef = useRef<Record<string, number>>({});
+  const [flashStates, setFlashStates] = useState<FlashState>({});
+
+  // Detect price changes and trigger flash
+  useEffect(() => {
+    if (!items || items.length === 0) return;
+
+    const newFlashes: FlashState = {};
+    
+    items.forEach(item => {
+      const prevPrice = prevPricesRef.current[item.symbol];
+      if (prevPrice !== undefined && prevPrice !== item.price) {
+        newFlashes[item.symbol] = item.price > prevPrice ? "up" : "down";
+      }
+      prevPricesRef.current[item.symbol] = item.price;
+    });
+
+    if (Object.keys(newFlashes).length > 0) {
+      setFlashStates(prev => ({ ...prev, ...newFlashes }));
+      
+      // Clear flashes after animation
+      const timeout = setTimeout(() => {
+        setFlashStates(prev => {
+          const cleared = { ...prev };
+          Object.keys(newFlashes).forEach(sym => {
+            cleared[sym] = null;
+          });
+          return cleared;
+        });
+      }, 600);
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [items]);
 
   return (
     <Card className="h-full bg-card/50 backdrop-blur-sm border-border/10">
@@ -130,7 +170,17 @@ export const WatchlistTower = ({
                     </div>
                     
                     <div className="flex items-center justify-between">
-                      <span className="text-base font-bold number-mono">${item.price.toFixed(2)}</span>
+                      <span 
+                        className={`text-base font-bold number-mono transition-colors duration-300 ${
+                          flashStates[item.symbol] === "up" 
+                            ? "text-bull animate-pulse" 
+                            : flashStates[item.symbol] === "down" 
+                            ? "text-bear animate-pulse" 
+                            : ""
+                        }`}
+                      >
+                        ${item.price.toFixed(2)}
+                      </span>
                       <Badge
                         className={`text-xs font-bold number-mono px-2 py-0.5 rounded-full ${
                           item.changePct >= 0
