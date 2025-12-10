@@ -10,10 +10,9 @@ import { Separator } from '@/components/ui/separator';
 import { alpacaWs, AlpacaFeedType, AlpacaMessage } from '@/services/AlpacaWebSocket';
 import { useDataStreams } from '@/contexts/DataStreamContext';
 import { useExchanges } from '@/contexts/ExchangeContext';
-import { useAlpacaToSupabase } from '@/hooks/useAlpacaToSupabase';
 import { 
   Wifi, WifiOff, Shield, AlertTriangle, Zap, 
-  TrendingUp, DollarSign, BarChart3, Play, Square, RefreshCw, Database
+  TrendingUp, DollarSign, BarChart3, Play, Square, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -49,12 +48,6 @@ export const AlpacaStreamManager = () => {
   const [lastError, setLastError] = useState<string | null>(null);
   const [messageCount, setMessageCount] = useState(0);
   const [lastPrice, setLastPrice] = useState<Record<string, number>>({});
-  const [persistToDb, setPersistToDb] = useState(false);
-
-  // Hook to persist Alpaca data to Supabase
-  const persistStats = useAlpacaToSupabase({ 
-    enabled: persistToDb && (status === 'authenticated' || status === 'subscribed') 
-  });
 
   const streamId = 'alpaca-live';
 
@@ -403,37 +396,6 @@ export const AlpacaStreamManager = () => {
         </div>
 
         <Separator />
-
-        {/* Persist to Database Toggle */}
-        {isConnected && (
-          <div className="flex items-center justify-between p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
-            <div className="flex items-center gap-2">
-              <Database className="h-4 w-4 text-blue-500" />
-              <div>
-                <Label htmlFor="persist-db" className="font-medium cursor-pointer">Persist to Database</Label>
-                <p className="text-xs text-muted-foreground">Write quotes to live_quotes table</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {persistToDb && persistStats.isPersisting && (
-                <Badge variant="secondary" className="text-xs animate-pulse">Writing...</Badge>
-              )}
-              {persistToDb && persistStats.upsertsTotal > 0 && (
-                <Badge className="bg-blue-500 text-white text-xs">
-                  {persistStats.upsertsTotal} upserts
-                </Badge>
-              )}
-              {persistStats.lastError && (
-                <Badge variant="destructive" className="text-xs">Error</Badge>
-              )}
-              <Switch 
-                id="persist-db" 
-                checked={persistToDb} 
-                onCheckedChange={setPersistToDb}
-              />
-            </div>
-          </div>
-        )}
 
         {/* Status & Metrics */}
         {isConnected && (
