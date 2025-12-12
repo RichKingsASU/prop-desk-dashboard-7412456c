@@ -56,18 +56,24 @@ export const AlpacaStreamManager = () => {
       setStatus(newStatus);
       if (error) setLastError(error);
       
+      const symbolList = symbols.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+      
       // Update stream status in context
       if (newStatus === 'authenticated' || newStatus === 'subscribed') {
         updateStreamStatus(streamId, 'connected');
-        updateExchangeStatus('alpaca', 'active');
+        updateExchangeStatus('alpaca', 'active', { 
+          streams: [streamId],
+          latencyMs: 25, // Estimated WebSocket latency
+          errorRate: 0
+        });
       } else if (newStatus === 'connecting' || newStatus === 'authenticating') {
         updateStreamStatus(streamId, 'connecting');
       } else if (newStatus === 'error') {
         updateStreamStatus(streamId, 'error', error);
-        updateExchangeStatus('alpaca', 'degraded');
+        updateExchangeStatus('alpaca', 'degraded', { errorRate: 0.5 });
       } else if (newStatus === 'disconnected') {
         updateStreamStatus(streamId, 'disconnected');
-        updateExchangeStatus('alpaca', 'inactive');
+        updateExchangeStatus('alpaca', 'inactive', { streams: [], latencyMs: 0 });
       }
     });
 
@@ -85,7 +91,7 @@ export const AlpacaStreamManager = () => {
       unsubStatus();
       unsubMessage();
     };
-  }, [recordMessage, updateStreamStatus, updateExchangeStatus]);
+  }, [recordMessage, updateStreamStatus, updateExchangeStatus, symbols]);
 
   const handleConnect = async () => {
     const symbolList = symbols.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
