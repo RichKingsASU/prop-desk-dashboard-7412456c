@@ -32,7 +32,7 @@ interface ExchangeContextType {
   exchanges: Exchange[];
   addExchange: (exchange: Exchange) => void;
   removeExchange: (id: string) => void;
-  updateExchangeStatus: (id: string, status: ExchangeStatus) => void;
+  updateExchangeStatus: (id: string, status: ExchangeStatus, metadata?: { latencyMs?: number; streams?: string[]; errorRate?: number }) => void;
   updateRateLimits: (id: string, limits: Partial<RateLimits>) => void;
   testConnection: (id: string) => Promise<boolean>;
   getExchangeById: (id: string) => Exchange | undefined;
@@ -207,8 +207,15 @@ export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setExchanges(prev => prev.filter(e => e.id !== id));
   }, [exchanges]);
 
-  const updateExchangeStatus = useCallback((id: string, status: ExchangeStatus) => {
-    setExchanges(prev => prev.map(e => e.id === id ? { ...e, status, lastHealthCheck: new Date() } : e));
+  const updateExchangeStatus = useCallback((id: string, status: ExchangeStatus, metadata?: { latencyMs?: number; streams?: string[]; errorRate?: number }) => {
+    setExchanges(prev => prev.map(e => e.id === id ? { 
+      ...e, 
+      status, 
+      lastHealthCheck: new Date(),
+      ...(metadata?.latencyMs !== undefined && { latencyMs: metadata.latencyMs }),
+      ...(metadata?.streams && { streams: metadata.streams }),
+      ...(metadata?.errorRate !== undefined && { errorRate: metadata.errorRate })
+    } : e));
   }, []);
 
   const updateRateLimits = useCallback((id: string, limits: Partial<RateLimits>) => {
