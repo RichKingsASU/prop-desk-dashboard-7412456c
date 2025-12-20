@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { useExchanges } from '@/contexts/ExchangeContext';
 import { logEvent } from '@/lib/eventLogStore';
 import { 
   Wifi, WifiOff, Shield, AlertTriangle, Zap, 
-  TrendingUp, DollarSign, BarChart3, Play, Square, RefreshCw
+  TrendingUp, DollarSign, BarChart3, Play, Square, RefreshCw, FlaskConical
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -49,6 +49,10 @@ export const AlpacaStreamManager = () => {
   const [lastError, setLastError] = useState<string | null>(null);
   const [messageCount, setMessageCount] = useState(0);
   const [lastPrice, setLastPrice] = useState<Record<string, number>>({});
+
+  // Refs to fix stale closure bug in message handler
+  const msgCountRef = useRef(0);
+  const firstMessageReceived = useRef(false);
 
   const streamId = 'alpaca-live';
 
@@ -89,15 +93,29 @@ export const AlpacaStreamManager = () => {
 
     const unsubMessage = alpacaWs.onMessage((message: AlpacaMessage) => {
       setMessageCount(c => c + 1);
+      msgCountRef.current += 1;
       recordMessage(streamId);
+      
+      // Log first message received
+      if (!firstMessageReceived.current) {
+        firstMessageReceived.current = true;
+        logEvent('info', 'alpaca', 'message', 'First message received', { 
+          type: message.T, 
+          symbol: message.S 
+        });
+      }
       
       // Track last price for trades
       if (message.T === 't') {
         setLastPrice(prev => ({ ...prev, [message.S]: message.p }));
-        // Log trade messages (throttled - only log every 10th message to avoid spam)
-        if (messageCount % 10 === 0) {
-          logEvent('debug', 'alpaca', 'trade', `${message.S} @ ${message.p}`, { size: message.s });
-        }
+      }
+      
+      // Rate-limited logging every 25 messages (using ref to avoid stale closure)
+      if (msgCountRef.current % 25 === 0) {
+        logEvent('debug', 'alpaca', 'message', `Received ${msgCountRef.current} messages`, { 
+          lastType: message.T, 
+          lastSymbol: message.S 
+        });
       }
     });
 
@@ -105,7 +123,7 @@ export const AlpacaStreamManager = () => {
       unsubStatus();
       unsubMessage();
     };
-  }, [recordMessage, updateStreamStatus, updateExchangeStatus, symbols, feedType, messageCount]);
+  }, [recordMessage, updateStreamStatus, updateExchangeStatus, symbols, feedType]);
 
   const handleConnect = async () => {
     const symbolList = symbols.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
@@ -118,6 +136,13 @@ export const AlpacaStreamManager = () => {
       toast.error('Please enter your Alpaca API credentials or enable Demo Mode');
       return;
     }
+
+    // Log connect clicked
+    logEvent('info', 'alpaca', 'ui', 'Connect clicked', { 
+      symbols: symbolList, 
+      feedType, 
+      demoMode 
+    });
 
     // Register the stream in context
     registerStream({
@@ -149,6 +174,13 @@ export const AlpacaStreamManager = () => {
           if (subscribeQuotes) subscription.quotes = symbolList;
           if (subscribeBars) subscription.bars = symbolList;
           
+          // Log subscribe sent
+          logEvent('info', 'alpaca', 'subscription', 'Subscribe sent', { 
+            trades: subscribeTrades ? symbolList : [], 
+            quotes: subscribeQuotes ? symbolList : [], 
+            bars: subscribeBars ? symbolList : [] 
+          });
+          
           alpacaWs.subscribeMock(subscription);
           toast.success('Demo Mode Connected', {
             description: `Streaming simulated data for ${symbolList.join(', ')}`
@@ -171,6 +203,13 @@ export const AlpacaStreamManager = () => {
           if (subscribeQuotes) subscription.quotes = symbolList;
           if (subscribeBars) subscription.bars = symbolList;
           
+          // Log subscribe sent
+          logEvent('info', 'alpaca', 'subscription', 'Subscribe sent', { 
+            trades: subscribeTrades ? symbolList : [], 
+            quotes: subscribeQuotes ? symbolList : [], 
+            bars: subscribeBars ? symbolList : [] 
+          });
+          
           alpacaWs.subscribe(subscription);
           toast.success('Connected to Alpaca', {
             description: `Subscribed to ${symbolList.join(', ')}`
@@ -184,11 +223,20 @@ export const AlpacaStreamManager = () => {
   };
 
   const handleDisconnect = () => {
+    logEvent('info', 'alpaca', 'ui', 'Disconnect clicked');
     alpacaWs.disconnect();
     unregisterStream(streamId);
     setMessageCount(0);
     setLastPrice({});
+    // Reset refs
+    msgCountRef.current = 0;
+    firstMessageReceived.current = false;
     toast.info('Disconnected from Alpaca');
+  };
+
+  const handleTestLog = () => {
+    logEvent('info', 'alpaca', 'test', 'Alpaca log pipeline OK');
+    toast.success('Test log emitted - check Debug Console');
   };
 
   const handleAddSymbols = (presetSymbols: string[]) => {
@@ -256,6 +304,15 @@ export const AlpacaStreamManager = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-xs h-7 px-2"
+              onClick={handleTestLog}
+            >
+              <FlaskConical className="h-3 w-3 mr-1" />
+              Test Log
+            </Button>
             <span className={`h-2.5 w-2.5 rounded-full ${getStatusColor()} animate-pulse`} />
             <span className="text-sm">{getStatusText()}</span>
           </div>
