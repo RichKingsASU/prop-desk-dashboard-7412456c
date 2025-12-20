@@ -259,7 +259,7 @@ export const EventLogConsole = () => {
             
             {/* Source Filter */}
             <div className="flex gap-1">
-              {(['all', 'supabase', 'alpaca', 'exchange', 'system'] as const).map(source => (
+              {(['all', 'supabase', 'alpaca', 'exchange', 'system', 'ui'] as const).map(source => (
                 <Button
                   key={source}
                   variant={sourceFilter === source ? "default" : "outline"}
