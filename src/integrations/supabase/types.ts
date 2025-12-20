@@ -242,6 +242,36 @@ export type Database = {
           },
         ]
       }
+      dev_event_logs: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          level: string
+          message: string
+          meta: Json | null
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          level: string
+          message: string
+          meta?: Json | null
+          source: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          level?: string
+          message?: string
+          meta?: Json | null
+          source?: string
+        }
+        Relationships: []
+      }
       live_quotes: {
         Row: {
           ask_price: number | null
