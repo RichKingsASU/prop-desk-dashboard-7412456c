@@ -9,7 +9,8 @@ import {
   Settings,
   User,
   LogOut,
-  LogIn
+  LogIn,
+  Activity
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
@@ -40,6 +41,7 @@ const tradingRoutes = [
 
 const developmentRoutes = [
   { title: "Developer", url: "/developer", icon: Wrench },
+  { title: "Ops Dashboard", url: "/ops", icon: Activity },
   { title: "Test Hub", url: "/test", icon: FlaskConical },
   { title: "Supabase", url: "/test/supabase-dashboard", icon: Database },
 ];
