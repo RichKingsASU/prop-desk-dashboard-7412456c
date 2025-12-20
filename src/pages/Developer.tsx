@@ -16,10 +16,11 @@ import { AlpacaStreamManager } from '@/components/developer/AlpacaStreamManager'
 import LiveQuotesWidget from '@/components/test/LiveQuotesWidget';
 
 const DeveloperHeader = () => {
-  const { getAggregateStats } = useDataStreams();
-  const { getOverallHealth } = useExchanges();
-  const streamStats = getAggregateStats();
-  const exchangeHealth = getOverallHealth();
+  const dataStreamContext = useDataStreams();
+  const exchangeContext = useExchanges();
+  
+  const streamStats = dataStreamContext.getAggregateStats();
+  const exchangeHealth = exchangeContext.getOverallHealth();
 
   const getHealthIndicator = () => {
     if (streamStats.errors > 0 || exchangeHealth.down > 0) return 'bg-destructive';
