@@ -34,6 +34,12 @@ let opsToken: string | null = null;
 let lastFlushTime: Date | null = null;
 let lastError: string | null = null;
 let pendingLogs: EventLog[] = [];
+let persistenceSnapshot: PersistenceStatus = {
+  enabled: false,
+  lastFlushTime: null,
+  lastError: null,
+  pendingCount: 0
+};
 let flushIntervalId: number | null = null;
 let persistenceListeners: Set<() => void> = new Set();
 
@@ -41,7 +47,17 @@ const notifyListeners = () => {
   listeners.forEach(listener => listener());
 };
 
+const updatePersistenceSnapshot = () => {
+  persistenceSnapshot = {
+    enabled: isPersistenceEnabled,
+    lastFlushTime,
+    lastError,
+    pendingCount: pendingLogs.length
+  };
+};
+
 const notifyPersistenceListeners = () => {
+  updatePersistenceSnapshot();
   persistenceListeners.forEach(listener => listener());
 };
 
@@ -161,12 +177,7 @@ export const eventLogStore = {
 
 // Persistence API
 export const persistenceStore = {
-  getSnapshot: (): PersistenceStatus => ({
-    enabled: isPersistenceEnabled,
-    lastFlushTime,
-    lastError,
-    pendingCount: pendingLogs.length
-  }),
+  getSnapshot: (): PersistenceStatus => persistenceSnapshot,
 
   subscribe: (listener: () => void) => {
     persistenceListeners.add(listener);
