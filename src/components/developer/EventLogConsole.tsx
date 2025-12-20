@@ -4,8 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Terminal, Copy, Trash2, Pause, Play, Filter } from 'lucide-react';
-import { useEventLogs, clearLogs, LogLevel, LogSource } from '@/lib/eventLogStore';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Terminal, Copy, Trash2, Pause, Play, Filter, Download, Database, Clock, AlertCircle } from 'lucide-react';
+import { useEventLogs, usePersistenceStatus, clearLogs, LogLevel, LogSource, persistenceStore } from '@/lib/eventLogStore';
+import { useToast } from '@/hooks/use-toast';
 
 const levelColors: Record<LogLevel, string> = {
   info: 'bg-blue-500/10 text-blue-600',
@@ -22,12 +27,21 @@ const sourceColors: Record<LogSource, string> = {
   ui: 'text-slate-600'
 };
 
+type TimeRange = '15m' | '1h' | '24h' | 'all';
+
 export const EventLogConsole = () => {
   const logs = useEventLogs();
+  const persistenceStatus = usePersistenceStatus();
+  const { toast } = useToast();
+  
   const [isPaused, setIsPaused] = useState(false);
   const [filter, setFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState<LogLevel | 'all'>('all');
   const [sourceFilter, setSourceFilter] = useState<LogSource | 'all'>('all');
+  const [timeRange, setTimeRange] = useState<TimeRange>('all');
+  const [showTokenDialog, setShowTokenDialog] = useState(false);
+  const [tokenInput, setTokenInput] = useState('');
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pausedLogs, setPausedLogs] = useState(logs);
 
@@ -47,7 +61,23 @@ export const EventLogConsole = () => {
 
   const displayLogs = isPaused ? pausedLogs : logs;
 
-  const filteredLogs = displayLogs.filter(log => {
+  // Apply time range filter
+  const getTimeFilteredLogs = () => {
+    if (timeRange === 'all') return displayLogs;
+    
+    const now = Date.now();
+    const ranges: Record<TimeRange, number> = {
+      '15m': 15 * 60 * 1000,
+      '1h': 60 * 60 * 1000,
+      '24h': 24 * 60 * 60 * 1000,
+      'all': Infinity
+    };
+    
+    const cutoff = now - ranges[timeRange];
+    return displayLogs.filter(log => log.timestamp.getTime() >= cutoff);
+  };
+
+  const filteredLogs = getTimeFilteredLogs().filter(log => {
     if (levelFilter !== 'all' && log.level !== levelFilter) return false;
     if (sourceFilter !== 'all' && log.source !== sourceFilter) return false;
     if (filter) {
@@ -61,128 +91,285 @@ export const EventLogConsole = () => {
     return true;
   });
 
-  const copyLogs = () => {
-    const text = filteredLogs.map(log => 
+  const copyLogs = (count?: number) => {
+    const logsToCopy = count ? filteredLogs.slice(-count) : filteredLogs;
+    const text = logsToCopy.map(log => 
       `[${log.timestamp.toISOString()}] [${log.level.toUpperCase()}] [${log.source}] [${log.category}] ${log.message}${log.meta ? ' ' + JSON.stringify(log.meta) : ''}`
     ).join('\n');
     navigator.clipboard.writeText(text);
+    toast({
+      title: 'Copied to clipboard',
+      description: `${logsToCopy.length} log entries copied`
+    });
+  };
+
+  const exportJson = () => {
+    const exportData = filteredLogs.map(log => ({
+      timestamp: log.timestamp.toISOString(),
+      level: log.level,
+      source: log.source,
+      category: log.category,
+      message: log.message,
+      meta: log.meta
+    }));
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dev-logs-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: 'Logs exported',
+      description: `${filteredLogs.length} entries exported to JSON`
+    });
+  };
+
+  const handlePersistToggle = (checked: boolean) => {
+    if (checked) {
+      const storedToken = persistenceStore.getStoredToken();
+      if (storedToken) {
+        persistenceStore.togglePersistence(true, storedToken);
+      } else {
+        setShowTokenDialog(true);
+      }
+    } else {
+      persistenceStore.togglePersistence(false);
+    }
+  };
+
+  const handleTokenSubmit = () => {
+    if (tokenInput.trim()) {
+      persistenceStore.togglePersistence(true, tokenInput.trim());
+      setShowTokenDialog(false);
+      setTokenInput('');
+      toast({
+        title: 'Log persistence enabled',
+        description: 'Logs will be saved to Supabase every second'
+      });
+    }
   };
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString() + '.' + date.getMilliseconds().toString().padStart(3, '0');
   };
 
+  const formatFlushTime = () => {
+    if (!persistenceStatus.lastFlushTime) return null;
+    const seconds = Math.floor((Date.now() - persistenceStatus.lastFlushTime.getTime()) / 1000);
+    return `${seconds}s ago`;
+  };
+
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Terminal className="h-4 w-4" />
-            Event Log Console
-            <Badge variant="outline" className="ml-2 text-xs">
-              {filteredLogs.length} / {displayLogs.length}
-            </Badge>
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant={isPaused ? "default" : "outline"} 
-              size="sm"
-              onClick={() => setIsPaused(!isPaused)}
-            >
-              {isPaused ? <Play className="h-3 w-3 mr-1" /> : <Pause className="h-3 w-3 mr-1" />}
-              {isPaused ? 'Resume' : 'Pause'}
-            </Button>
-            <Button variant="outline" size="sm" onClick={copyLogs}>
-              <Copy className="h-3 w-3 mr-1" />
-              Copy
-            </Button>
-            <Button variant="outline" size="sm" onClick={clearLogs}>
-              <Trash2 className="h-3 w-3 mr-1" />
-              Clear
-            </Button>
+    <>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Terminal className="h-4 w-4" />
+              Event Log Console
+              <Badge variant="outline" className="ml-2 text-xs">
+                {filteredLogs.length} / {displayLogs.length}
+              </Badge>
+            </CardTitle>
+            
+            <div className="flex items-center gap-3">
+              {/* Persistence Toggle */}
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted/50">
+                <Database className="h-4 w-4 text-muted-foreground" />
+                <Label htmlFor="persist-toggle" className="text-xs font-medium cursor-pointer">
+                  Persist
+                </Label>
+                <Switch 
+                  id="persist-toggle"
+                  checked={persistenceStatus.enabled}
+                  onCheckedChange={handlePersistToggle}
+                />
+                {persistenceStatus.enabled && (
+                  <div className="flex items-center gap-1.5 text-xs">
+                    {persistenceStatus.lastError ? (
+                      <span className="text-destructive flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        Error
+                      </span>
+                    ) : (
+                      <>
+                        <Clock className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-muted-foreground">
+                          {formatFlushTime() || 'Waiting...'}
+                        </span>
+                        {persistenceStatus.pendingCount > 0 && (
+                          <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                            {persistenceStatus.pendingCount}
+                          </Badge>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant={isPaused ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => setIsPaused(!isPaused)}
+                >
+                  {isPaused ? <Play className="h-3 w-3 mr-1" /> : <Pause className="h-3 w-3 mr-1" />}
+                  {isPaused ? 'Resume' : 'Pause'}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => copyLogs()}>
+                  <Copy className="h-3 w-3 mr-1" />
+                  Copy
+                </Button>
+                <Button variant="outline" size="sm" onClick={clearLogs}>
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Clear
+                </Button>
+              </div>
+            </div>
           </div>
-        </div>
+          
+          {/* Filters */}
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
+              <Filter className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Filter logs..." 
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="pl-8 h-9"
+              />
+            </div>
+            
+            {/* Time Range Filter */}
+            <Select value={timeRange} onValueChange={(v: TimeRange) => setTimeRange(v)}>
+              <SelectTrigger className="w-[100px] h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="15m">Last 15m</SelectItem>
+                <SelectItem value="1h">Last 1h</SelectItem>
+                <SelectItem value="24h">Last 24h</SelectItem>
+                <SelectItem value="all">All Time</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {/* Source Filter */}
+            <div className="flex gap-1">
+              {(['all', 'supabase', 'alpaca', 'exchange', 'system'] as const).map(source => (
+                <Button
+                  key={source}
+                  variant={sourceFilter === source ? "default" : "outline"}
+                  size="sm"
+                  className="text-xs h-9 px-2.5"
+                  onClick={() => setSourceFilter(source)}
+                >
+                  {source === 'all' ? 'All' : source.charAt(0).toUpperCase() + source.slice(1)}
+                </Button>
+              ))}
+            </div>
+            
+            {/* Level Filter */}
+            <div className="flex gap-1">
+              {(['all', 'info', 'warn', 'error', 'debug'] as const).map(level => (
+                <Button
+                  key={level}
+                  variant={levelFilter === level ? "default" : "outline"}
+                  size="sm"
+                  className="text-xs h-9 px-2.5"
+                  onClick={() => setLevelFilter(level)}
+                >
+                  {level === 'all' ? 'All' : level.charAt(0).toUpperCase() + level.slice(1)}
+                </Button>
+              ))}
+            </div>
+            
+            {/* Export/Copy Buttons */}
+            <div className="flex gap-1 ml-auto">
+              <Button variant="outline" size="sm" className="h-9" onClick={exportJson}>
+                <Download className="h-3 w-3 mr-1" />
+                Export JSON
+              </Button>
+              <Button variant="outline" size="sm" className="h-9" onClick={() => copyLogs(200)}>
+                <Copy className="h-3 w-3 mr-1" />
+                Copy Last 200
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
         
-        {/* Filters */}
-        <div className="flex items-center gap-2 mt-3 flex-wrap">
-          <div className="relative flex-1 min-w-[200px]">
-            <Filter className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Filter logs..." 
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="pl-8 h-9"
+        <CardContent>
+          <ScrollArea className="h-80 rounded-md border bg-muted/30" ref={scrollRef}>
+            <div className="p-2 font-mono text-xs space-y-1">
+              {filteredLogs.length === 0 ? (
+                <div className="text-muted-foreground text-center py-8">
+                  {displayLogs.length === 0 
+                    ? 'No events logged yet. Events from Supabase channels, Alpaca WebSocket, and exchanges will appear here.'
+                    : 'No logs match the current filters'}
+                </div>
+              ) : (
+                filteredLogs.map(log => (
+                  <div key={log.id} className="flex items-start gap-2 py-0.5 hover:bg-muted/50 rounded px-1">
+                    <span className="text-muted-foreground whitespace-nowrap">
+                      {formatTime(log.timestamp)}
+                    </span>
+                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${levelColors[log.level]}`}>
+                      {log.level.toUpperCase()}
+                    </Badge>
+                    <span className={`whitespace-nowrap font-medium ${sourceColors[log.source]}`}>
+                      [{log.source}]
+                    </span>
+                    <span className="text-muted-foreground whitespace-nowrap">
+                      [{log.category}]
+                    </span>
+                    <span className="text-foreground flex-1">{log.message}</span>
+                    {log.meta && Object.keys(log.meta).length > 0 && (
+                      <span className="text-muted-foreground text-[10px]">
+                        {JSON.stringify(log.meta)}
+                      </span>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+
+      {/* OPS Token Dialog */}
+      <Dialog open={showTokenDialog} onOpenChange={setShowTokenDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enable Log Persistence</DialogTitle>
+            <DialogDescription>
+              Enter your OPS Log Ingest Token to persist logs to Supabase. This token is stored in your browser's localStorage and used for all future sessions.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="ops-token">OPS Log Ingest Token</Label>
+            <Input
+              id="ops-token"
+              type="password"
+              placeholder="Enter your token..."
+              value={tokenInput}
+              onChange={(e) => setTokenInput(e.target.value)}
+              className="mt-2"
+              onKeyDown={(e) => e.key === 'Enter' && handleTokenSubmit()}
             />
           </div>
-          
-          {/* Source Filter */}
-          <div className="flex gap-1">
-            {(['all', 'supabase', 'alpaca', 'exchange', 'system'] as const).map(source => (
-              <Button
-                key={source}
-                variant={sourceFilter === source ? "default" : "outline"}
-                size="sm"
-                className="text-xs h-9 px-2.5"
-                onClick={() => setSourceFilter(source)}
-              >
-                {source === 'all' ? 'All Sources' : source.charAt(0).toUpperCase() + source.slice(1)}
-              </Button>
-            ))}
-          </div>
-          
-          {/* Level Filter */}
-          <div className="flex gap-1">
-            {(['all', 'info', 'warn', 'error', 'debug'] as const).map(level => (
-              <Button
-                key={level}
-                variant={levelFilter === level ? "default" : "outline"}
-                size="sm"
-                className="text-xs h-9 px-2.5"
-                onClick={() => setLevelFilter(level)}
-              >
-                {level === 'all' ? 'All Levels' : level.charAt(0).toUpperCase() + level.slice(1)}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent>
-        <ScrollArea className="h-80 rounded-md border bg-muted/30" ref={scrollRef}>
-          <div className="p-2 font-mono text-xs space-y-1">
-            {filteredLogs.length === 0 ? (
-              <div className="text-muted-foreground text-center py-8">
-                {displayLogs.length === 0 
-                  ? 'No events logged yet. Events from Supabase channels, Alpaca WebSocket, and exchanges will appear here.'
-                  : 'No logs match the current filters'}
-              </div>
-            ) : (
-              filteredLogs.map(log => (
-                <div key={log.id} className="flex items-start gap-2 py-0.5 hover:bg-muted/50 rounded px-1">
-                  <span className="text-muted-foreground whitespace-nowrap">
-                    {formatTime(log.timestamp)}
-                  </span>
-                  <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${levelColors[log.level]}`}>
-                    {log.level.toUpperCase()}
-                  </Badge>
-                  <span className={`whitespace-nowrap font-medium ${sourceColors[log.source]}`}>
-                    [{log.source}]
-                  </span>
-                  <span className="text-muted-foreground whitespace-nowrap">
-                    [{log.category}]
-                  </span>
-                  <span className="text-foreground flex-1">{log.message}</span>
-                  {log.meta && Object.keys(log.meta).length > 0 && (
-                    <span className="text-muted-foreground text-[10px]">
-                      {JSON.stringify(log.meta)}
-                    </span>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTokenDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleTokenSubmit} disabled={!tokenInput.trim()}>
+              Enable Persistence
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
