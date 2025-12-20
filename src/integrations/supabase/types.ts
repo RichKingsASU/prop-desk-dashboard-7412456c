@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      alpaca_option_snapshots: {
+        Row: {
+          inserted_at: string
+          option_symbol: string
+          payload: Json
+          snapshot_time: string
+          underlying_symbol: string
+        }
+        Insert: {
+          inserted_at?: string
+          option_symbol: string
+          payload: Json
+          snapshot_time: string
+          underlying_symbol: string
+        }
+        Update: {
+          inserted_at?: string
+          option_symbol?: string
+          payload?: Json
+          snapshot_time?: string
+          underlying_symbol?: string
+        }
+        Relationships: []
+      }
       broker_accounts: {
         Row: {
           account_label: string
@@ -227,6 +251,7 @@ export type Database = {
           last_trade_price: number | null
           last_trade_size: number | null
           last_update_ts: string
+          session: string | null
           symbol: string
         }
         Insert: {
@@ -237,6 +262,7 @@ export type Database = {
           last_trade_price?: number | null
           last_trade_size?: number | null
           last_update_ts?: string
+          session?: string | null
           symbol: string
         }
         Update: {
@@ -247,6 +273,7 @@ export type Database = {
           last_trade_price?: number | null
           last_trade_size?: number | null
           last_update_ts?: string
+          session?: string | null
           symbol?: string
         }
         Relationships: []
@@ -257,6 +284,7 @@ export type Database = {
           high: number
           low: number
           open: number
+          session: string | null
           symbol: string
           ts: string
           volume: number
@@ -266,6 +294,7 @@ export type Database = {
           high: number
           low: number
           open: number
+          session?: string | null
           symbol: string
           ts: string
           volume: number
@@ -275,6 +304,7 @@ export type Database = {
           high?: number
           low?: number
           open?: number
+          session?: string | null
           symbol?: string
           ts?: string
           volume?: number
@@ -323,6 +353,60 @@ export type Database = {
           source?: string
           symbol?: string | null
           url?: string | null
+        }
+        Relationships: []
+      }
+      option_chain_snapshots: {
+        Row: {
+          ask: number | null
+          ask_size: number | null
+          bid: number | null
+          bid_size: number | null
+          delta: number | null
+          gamma: number | null
+          iv: number | null
+          last: number | null
+          raw: Json
+          rho: number | null
+          symbol: string
+          theta: number | null
+          ts: string
+          underlying_symbol: string
+          vega: number | null
+        }
+        Insert: {
+          ask?: number | null
+          ask_size?: number | null
+          bid?: number | null
+          bid_size?: number | null
+          delta?: number | null
+          gamma?: number | null
+          iv?: number | null
+          last?: number | null
+          raw: Json
+          rho?: number | null
+          symbol: string
+          theta?: number | null
+          ts: string
+          underlying_symbol: string
+          vega?: number | null
+        }
+        Update: {
+          ask?: number | null
+          ask_size?: number | null
+          bid?: number | null
+          bid_size?: number | null
+          delta?: number | null
+          gamma?: number | null
+          iv?: number | null
+          last?: number | null
+          raw?: Json
+          rho?: number | null
+          symbol?: string
+          theta?: number | null
+          ts?: string
+          underlying_symbol?: string
+          vega?: number | null
         }
         Relationships: []
       }
@@ -496,6 +580,13 @@ export type Database = {
             columns: ["strategy_id"]
             isOneToOne: false
             referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paper_orders_broker_fk"
+            columns: ["broker_account_id"]
+            isOneToOne: false
+            referencedRelation: "broker_accounts"
             referencedColumns: ["id"]
           },
         ]

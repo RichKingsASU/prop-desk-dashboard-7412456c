@@ -17,6 +17,11 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import TestHub from "./pages/test/TestHub";
 import SupabaseDashboard from "./pages/test/SupabaseDashboard";
+import OpsLayout from "./pages/ops/OpsLayout";
+import OpsOverview from "./pages/ops/OpsOverview";
+import OptionsExplorer from "./pages/ops/OptionsExplorer";
+import NewsViewer from "./pages/ops/NewsViewer";
+import JobHealth from "./pages/ops/JobHealth";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +43,12 @@ const App = () => (
                   <Route path="/console/:symbol" element={<Console />} />
                   <Route path="/options" element={<Options />} />
                   <Route path="/developer" element={<Developer />} />
+                  <Route path="/ops" element={<OpsLayout />}>
+                    <Route index element={<OpsOverview />} />
+                    <Route path="options" element={<OptionsExplorer />} />
+                    <Route path="news" element={<NewsViewer />} />
+                    <Route path="jobs" element={<JobHealth />} />
+                  </Route>
                   <Route path="/test" element={<TestHub />} />
                   <Route path="/test/supabase-dashboard" element={<SupabaseDashboard />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
