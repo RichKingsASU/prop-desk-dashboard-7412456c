@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Activity, Server, Radio, Terminal, Settings } from 'lucide-react';
+import { ArrowLeft, Activity, Server, Radio, Terminal, Settings, History } from 'lucide-react';
 import { DataStreamProvider, useDataStreams } from '@/contexts/DataStreamContext';
 import { ExchangeProvider, useExchanges } from '@/contexts/ExchangeContext';
 import { ExchangeStatusGrid } from '@/components/developer/ExchangeStatusGrid';
@@ -9,6 +9,7 @@ import { DataStreamPanel } from '@/components/developer/DataStreamPanel';
 import { DataFreshnessGrid } from '@/components/developer/DataFreshnessGrid';
 import { StreamMetricsChart } from '@/components/developer/StreamMetricsChart';
 import { EventLogConsole } from '@/components/developer/EventLogConsole';
+import { LogHistoryTab } from '@/components/developer/LogHistoryTab';
 import { SystemControls } from '@/components/developer/SystemControls';
 import { StreamManager } from '@/components/developer/StreamManager';
 import { AlpacaStreamManager } from '@/components/developer/AlpacaStreamManager';
@@ -83,6 +84,10 @@ const DeveloperContent = () => {
             <Terminal className="h-4 w-4" />
             Debug Console
           </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            Log History
+          </TabsTrigger>
           <TabsTrigger value="controls" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             Controls
@@ -111,6 +116,10 @@ const DeveloperContent = () => {
 
         <TabsContent value="debug" className="space-y-6">
           <EventLogConsole />
+        </TabsContent>
+
+        <TabsContent value="history" className="space-y-6">
+          <LogHistoryTab />
         </TabsContent>
 
         <TabsContent value="controls" className="space-y-6">
