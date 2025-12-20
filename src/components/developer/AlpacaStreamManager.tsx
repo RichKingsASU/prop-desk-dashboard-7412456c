@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { alpacaWs, AlpacaFeedType, AlpacaMessage } from '@/services/AlpacaWebSocket';
 import { useDataStreams } from '@/contexts/DataStreamContext';
 import { useExchanges } from '@/contexts/ExchangeContext';
+import { logEvent } from '@/lib/eventLogStore';
 import { 
   Wifi, WifiOff, Shield, AlertTriangle, Zap, 
   TrendingUp, DollarSign, BarChart3, Play, Square, RefreshCw
@@ -58,12 +59,21 @@ export const AlpacaStreamManager = () => {
       
       const symbolList = symbols.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
       
+      // Log status changes
+      logEvent(
+        error ? 'error' : 'info',
+        'alpaca',
+        'connection',
+        `Alpaca ${newStatus}${error ? `: ${error}` : ''}`,
+        { feedType, symbols: symbolList }
+      );
+      
       // Update stream status in context
       if (newStatus === 'authenticated' || newStatus === 'subscribed') {
         updateStreamStatus(streamId, 'connected');
         updateExchangeStatus('alpaca', 'active', { 
           streams: [streamId],
-          latencyMs: 25, // Estimated WebSocket latency
+          latencyMs: 25,
           errorRate: 0
         });
       } else if (newStatus === 'connecting' || newStatus === 'authenticating') {
@@ -84,6 +94,10 @@ export const AlpacaStreamManager = () => {
       // Track last price for trades
       if (message.T === 't') {
         setLastPrice(prev => ({ ...prev, [message.S]: message.p }));
+        // Log trade messages (throttled - only log every 10th message to avoid spam)
+        if (messageCount % 10 === 0) {
+          logEvent('debug', 'alpaca', 'trade', `${message.S} @ ${message.p}`, { size: message.s });
+        }
       }
     });
 
@@ -91,7 +105,7 @@ export const AlpacaStreamManager = () => {
       unsubStatus();
       unsubMessage();
     };
-  }, [recordMessage, updateStreamStatus, updateExchangeStatus, symbols]);
+  }, [recordMessage, updateStreamStatus, updateExchangeStatus, symbols, feedType, messageCount]);
 
   const handleConnect = async () => {
     const symbolList = symbols.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);

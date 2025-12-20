@@ -8,7 +8,7 @@ import { ExchangeStatusGrid } from '@/components/developer/ExchangeStatusGrid';
 import { DataStreamPanel } from '@/components/developer/DataStreamPanel';
 import { DataFreshnessGrid } from '@/components/developer/DataFreshnessGrid';
 import { StreamMetricsChart } from '@/components/developer/StreamMetricsChart';
-import { DebugConsole } from '@/components/developer/DebugConsole';
+import { EventLogConsole } from '@/components/developer/EventLogConsole';
 import { SystemControls } from '@/components/developer/SystemControls';
 import { StreamManager } from '@/components/developer/StreamManager';
 import { AlpacaStreamManager } from '@/components/developer/AlpacaStreamManager';
@@ -110,7 +110,7 @@ const DeveloperContent = () => {
         </TabsContent>
 
         <TabsContent value="debug" className="space-y-6">
-          <DebugConsole />
+          <EventLogConsole />
         </TabsContent>
 
         <TabsContent value="controls" className="space-y-6">

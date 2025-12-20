@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { logEvent } from '@/lib/eventLogStore';
 
 export type ExchangeType = 'broker' | 'data-provider' | 'options-exchange';
 export type ExchangeStatus = 'active' | 'inactive' | 'degraded' | 'maintenance';
@@ -172,17 +173,26 @@ export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Periodic health check for Supabase connection
   useEffect(() => {
-    const interval = setInterval(async () => {
-      // Test Supabase connection
+    const checkHealth = async () => {
       const start = Date.now();
       const { error } = await supabase.from('live_quotes').select('symbol').limit(1);
       const latency = Date.now() - start;
+      
+      const newStatus = error ? 'degraded' : 'active';
+      
+      logEvent(
+        error ? 'warn' : 'info',
+        'exchange',
+        'health',
+        `Supabase health check: ${newStatus}`,
+        { latencyMs: latency, error: error?.message }
+      );
 
       setExchanges(prev => prev.map(ex => {
         if (ex.id === 'supabase') {
           return {
             ...ex,
-            status: error ? 'degraded' : 'active',
+            status: newStatus,
             lastHealthCheck: new Date(),
             latencyMs: latency,
             errorRate: error ? 0.1 : 0
@@ -190,7 +200,13 @@ export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
         return ex;
       }));
-    }, 30000); // Check every 30 seconds
+    };
+
+    // Initial check
+    checkHealth();
+    
+    // Then check every 30 seconds
+    const interval = setInterval(checkHealth, 30000);
 
     return () => clearInterval(interval);
   }, []);

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { logEvent } from '@/lib/eventLogStore';
 
 export type StreamType = 'price' | 'options' | 'news' | 'level2' | 'trades' | 'account';
 export type StreamStatus = 'connected' | 'disconnected' | 'connecting' | 'error' | 'paused';
@@ -246,25 +247,37 @@ export const DataStreamProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     fetchInitialData();
 
+    // Log initial connection attempt
+    logEvent('info', 'supabase', 'init', 'Initializing Supabase realtime channels');
+
     // Set up Supabase real-time channels
     const marketDataChannel = supabase
       .channel('market-data-changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'market_data_1m' },
         (payload) => {
-          console.log('Market data change:', payload);
           const receivedAt = Date.now();
           const eventTime = payload.commit_timestamp ? new Date(payload.commit_timestamp).getTime() : receivedAt;
-          const latency = receivedAt - eventTime;
-          recordMessageInternal('supabase-market-data', Math.max(0, latency));
+          const latency = Math.max(0, receivedAt - eventTime);
+          recordMessageInternal('supabase-market-data', latency);
+          
+          const symbol = (payload.new as any)?.symbol || 'unknown';
+          logEvent('debug', 'supabase', 'message', `market_data_1m ${payload.eventType}: ${symbol}`, { latencyMs: latency });
         }
       )
       .subscribe((status) => {
-        console.log('Market data channel status:', status);
+        const streamStatus = status === 'SUBSCRIBED' ? 'connected' : status === 'CHANNEL_ERROR' ? 'error' : 'connecting';
+        logEvent(
+          status === 'CHANNEL_ERROR' ? 'error' : 'info',
+          'supabase',
+          'channel',
+          `market-data-changes: ${status}`,
+          { streamId: 'supabase-market-data' }
+        );
         setStreams(prev => prev.map(s => 
           s.id === 'supabase-market-data' ? { 
             ...s, 
-            status: status === 'SUBSCRIBED' ? 'connected' : status === 'CHANNEL_ERROR' ? 'error' : 'connecting',
+            status: streamStatus,
             connectedAt: status === 'SUBSCRIBED' ? new Date() : s.connectedAt
           } : s
         ));
@@ -275,19 +288,28 @@ export const DataStreamProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'live_quotes' },
         (payload) => {
-          console.log('Live quote change:', payload);
           const receivedAt = Date.now();
           const eventTime = payload.commit_timestamp ? new Date(payload.commit_timestamp).getTime() : receivedAt;
-          const latency = receivedAt - eventTime;
-          recordMessageInternal('supabase-quotes', Math.max(0, latency));
+          const latency = Math.max(0, receivedAt - eventTime);
+          recordMessageInternal('supabase-quotes', latency);
+          
+          const symbol = (payload.new as any)?.symbol || 'unknown';
+          logEvent('debug', 'supabase', 'message', `live_quotes ${payload.eventType}: ${symbol}`, { latencyMs: latency });
         }
       )
       .subscribe((status) => {
-        console.log('Quotes channel status:', status);
+        const streamStatus = status === 'SUBSCRIBED' ? 'connected' : status === 'CHANNEL_ERROR' ? 'error' : 'connecting';
+        logEvent(
+          status === 'CHANNEL_ERROR' ? 'error' : 'info',
+          'supabase',
+          'channel',
+          `quotes-changes: ${status}`,
+          { streamId: 'supabase-quotes' }
+        );
         setStreams(prev => prev.map(s => 
           s.id === 'supabase-quotes' ? { 
             ...s, 
-            status: status === 'SUBSCRIBED' ? 'connected' : status === 'CHANNEL_ERROR' ? 'error' : 'connecting',
+            status: streamStatus,
             connectedAt: status === 'SUBSCRIBED' ? new Date() : s.connectedAt
           } : s
         ));
@@ -298,19 +320,28 @@ export const DataStreamProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'news_events' },
         (payload) => {
-          console.log('News event change:', payload);
           const receivedAt = Date.now();
           const eventTime = payload.commit_timestamp ? new Date(payload.commit_timestamp).getTime() : receivedAt;
-          const latency = receivedAt - eventTime;
-          recordMessageInternal('supabase-news', Math.max(0, latency));
+          const latency = Math.max(0, receivedAt - eventTime);
+          recordMessageInternal('supabase-news', latency);
+          
+          const headline = (payload.new as any)?.headline?.substring(0, 50) || 'news event';
+          logEvent('debug', 'supabase', 'message', `news_events ${payload.eventType}: ${headline}...`, { latencyMs: latency });
         }
       )
       .subscribe((status) => {
-        console.log('News channel status:', status);
+        const streamStatus = status === 'SUBSCRIBED' ? 'connected' : status === 'CHANNEL_ERROR' ? 'error' : 'connecting';
+        logEvent(
+          status === 'CHANNEL_ERROR' ? 'error' : 'info',
+          'supabase',
+          'channel',
+          `news-changes: ${status}`,
+          { streamId: 'supabase-news' }
+        );
         setStreams(prev => prev.map(s => 
           s.id === 'supabase-news' ? { 
             ...s, 
-            status: status === 'SUBSCRIBED' ? 'connected' : status === 'CHANNEL_ERROR' ? 'error' : 'connecting',
+            status: streamStatus,
             connectedAt: status === 'SUBSCRIBED' ? new Date() : s.connectedAt
           } : s
         ));
@@ -321,19 +352,29 @@ export const DataStreamProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'options_flow' },
         (payload) => {
-          console.log('Options flow change:', payload);
           const receivedAt = Date.now();
           const eventTime = payload.commit_timestamp ? new Date(payload.commit_timestamp).getTime() : receivedAt;
-          const latency = receivedAt - eventTime;
-          recordMessageInternal('supabase-options-flow', Math.max(0, latency));
+          const latency = Math.max(0, receivedAt - eventTime);
+          recordMessageInternal('supabase-options-flow', latency);
+          
+          const symbol = (payload.new as any)?.symbol || 'unknown';
+          const side = (payload.new as any)?.side || '';
+          logEvent('debug', 'supabase', 'message', `options_flow ${payload.eventType}: ${symbol} ${side}`, { latencyMs: latency });
         }
       )
       .subscribe((status) => {
-        console.log('Options flow channel status:', status);
+        const streamStatus = status === 'SUBSCRIBED' ? 'connected' : status === 'CHANNEL_ERROR' ? 'error' : 'connecting';
+        logEvent(
+          status === 'CHANNEL_ERROR' ? 'error' : 'info',
+          'supabase',
+          'channel',
+          `options-flow-changes: ${status}`,
+          { streamId: 'supabase-options-flow' }
+        );
         setStreams(prev => prev.map(s => 
           s.id === 'supabase-options-flow' ? { 
             ...s, 
-            status: status === 'SUBSCRIBED' ? 'connected' : status === 'CHANNEL_ERROR' ? 'error' : 'connecting',
+            status: streamStatus,
             connectedAt: status === 'SUBSCRIBED' ? new Date() : s.connectedAt
           } : s
         ));
@@ -349,6 +390,7 @@ export const DataStreamProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     // Cleanup on unmount
     return () => {
+      logEvent('info', 'supabase', 'cleanup', 'Removing all Supabase realtime channels');
       Object.values(channelsRef.current).forEach(channel => {
         supabase.removeChannel(channel);
       });
