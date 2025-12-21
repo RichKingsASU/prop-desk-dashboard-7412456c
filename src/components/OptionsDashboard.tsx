@@ -1,4 +1,5 @@
 import { RefreshCw } from "lucide-react";
+import { RecentTradesTable } from "@/components/RecentTradesTable";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -153,6 +154,10 @@ export default function OptionsDashboard() {
               <p className="text-muted-foreground">No portfolio data available</p>
             </div>
           )}
+        </div>
+
+        <div className="mt-8">
+          <RecentTradesTable />
         </div>
       </div>
     </div>
