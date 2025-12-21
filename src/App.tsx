@@ -23,6 +23,7 @@ import OpsOverview from "./pages/ops/OpsOverview";
 import OptionsExplorer from "./pages/ops/OptionsExplorer";
 import NewsViewer from "./pages/ops/NewsViewer";
 import JobHealth from "./pages/ops/JobHealth";
+import MissionControl from "./pages/MissionControl";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const App = () => (
                   <Route path="/options" element={<Options />} />
                   <Route path="/options-dashboard" element={<OptionsDashboard />} />
                   <Route path="/developer" element={<Developer />} />
+                  <Route path="/mission-control" element={<MissionControl />} />
                   <Route path="/ops" element={<OpsLayout />}>
                     <Route index element={<OpsOverview />} />
                     <Route path="options" element={<OptionsExplorer />} />
