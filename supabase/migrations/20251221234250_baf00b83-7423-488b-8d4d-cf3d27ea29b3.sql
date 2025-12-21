@@ -1,0 +1,4 @@
+-- Enable REPLICA IDENTITY FULL for complete realtime payloads
+ALTER TABLE system_state REPLICA IDENTITY FULL;
+ALTER TABLE system_logs REPLICA IDENTITY FULL;
+ALTER TABLE system_commands REPLICA IDENTITY FULL;

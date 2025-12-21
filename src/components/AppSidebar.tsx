@@ -11,7 +11,8 @@ import {
   LogOut,
   LogIn,
   Activity,
-  PieChart
+  PieChart,
+  Rocket
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
@@ -36,6 +37,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const tradingRoutes = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Mission Control", url: "/mission-control", icon: Rocket },
   { title: "Options", url: "/options", icon: LineChart },
   { title: "Portfolio", url: "/options-dashboard", icon: PieChart },
   { title: "Console", url: "/console/SPY", icon: Monitor },
