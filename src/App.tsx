@@ -11,6 +11,7 @@ import Index from "./pages/Index";
 import F1Dashboard from "./pages/F1Dashboard";
 import Console from "./pages/Console";
 import Options from "./pages/Options";
+import OptionsDashboard from "./components/OptionsDashboard";
 import Developer from "./pages/Developer";
 import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
@@ -42,6 +43,7 @@ const App = () => (
                   <Route path="/legacy" element={<Index />} />
                   <Route path="/console/:symbol" element={<Console />} />
                   <Route path="/options" element={<Options />} />
+                  <Route path="/options-dashboard" element={<OptionsDashboard />} />
                   <Route path="/developer" element={<Developer />} />
                   <Route path="/ops" element={<OpsLayout />}>
                     <Route index element={<OpsOverview />} />
