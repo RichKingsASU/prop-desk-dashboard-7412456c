@@ -386,6 +386,192 @@ export type Database = {
         }
         Relationships: []
       }
+      ops_dead_letters: {
+        Row: {
+          attempts: number
+          created_at: string
+          error: string
+          id: string
+          meta: Json
+          payload: Json
+          pipeline: string
+          retry_after: string | null
+          stage: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error: string
+          id?: string
+          meta?: Json
+          payload: Json
+          pipeline: string
+          retry_after?: string | null
+          stage: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error?: string
+          id?: string
+          meta?: Json
+          payload?: Json
+          pipeline?: string
+          retry_after?: string | null
+          stage?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ops_heartbeats: {
+        Row: {
+          component: string
+          component_type: string
+          env: string
+          last_heartbeat_at: string
+          meta: Json
+          region: string | null
+          status: string
+          version: string | null
+        }
+        Insert: {
+          component: string
+          component_type: string
+          env?: string
+          last_heartbeat_at?: string
+          meta?: Json
+          region?: string | null
+          status?: string
+          version?: string | null
+        }
+        Update: {
+          component?: string
+          component_type?: string
+          env?: string
+          last_heartbeat_at?: string
+          meta?: Json
+          region?: string | null
+          status?: string
+          version?: string | null
+        }
+        Relationships: []
+      }
+      ops_incidents: {
+        Row: {
+          component: string
+          created_at: string
+          details: string | null
+          id: string
+          meta: Json
+          resolved_at: string | null
+          severity: string
+          status: string
+          title: string
+        }
+        Insert: {
+          component: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          meta?: Json
+          resolved_at?: string | null
+          severity: string
+          status?: string
+          title: string
+        }
+        Update: {
+          component?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          meta?: Json
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      ops_lkg: {
+        Row: {
+          dataset: string
+          env: string
+          expected_cadence_ms: number | null
+          lag_ms: number | null
+          lkg_time: string | null
+          max_lag_ms: number | null
+          meta: Json
+          observed_at: string
+          reason: string | null
+          status: string
+        }
+        Insert: {
+          dataset: string
+          env?: string
+          expected_cadence_ms?: number | null
+          lag_ms?: number | null
+          lkg_time?: string | null
+          max_lag_ms?: number | null
+          meta?: Json
+          observed_at?: string
+          reason?: string | null
+          status: string
+        }
+        Update: {
+          dataset?: string
+          env?: string
+          expected_cadence_ms?: number | null
+          lag_ms?: number | null
+          lkg_time?: string | null
+          max_lag_ms?: number | null
+          meta?: Json
+          observed_at?: string
+          reason?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      ops_watermarks: {
+        Row: {
+          id: string
+          lag_ms: number | null
+          last_event_time: string | null
+          last_received_at: string | null
+          last_sequence: number | null
+          meta: Json
+          partition_key: string
+          pipeline: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          lag_ms?: number | null
+          last_event_time?: string | null
+          last_received_at?: string | null
+          last_sequence?: number | null
+          meta?: Json
+          partition_key?: string
+          pipeline: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          lag_ms?: number | null
+          last_event_time?: string | null
+          last_received_at?: string | null
+          last_sequence?: number | null
+          meta?: Json
+          partition_key?: string
+          pipeline?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       option_chain_snapshots: {
         Row: {
           ask: number | null
@@ -617,6 +803,13 @@ export type Database = {
             columns: ["broker_account_id"]
             isOneToOne: false
             referencedRelation: "broker_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paper_orders_strategy_fk"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
             referencedColumns: ["id"]
           },
         ]
@@ -1115,110 +1308,71 @@ export type Database = {
       }
       trades: {
         Row: {
-          average_fill_price: number | null
-          broker_account_id: string
-          broker_execution_id: string | null
-          broker_order_id: string | null
-          canceled_at: string | null
           created_at: string
-          error_message: string | null
-          fees: number | null
-          filled_at: string | null
-          filled_qty: number | null
+          delta: number | null
+          expiry: string
+          gamma: number | null
           id: string
-          instrument: Database["public"]["Enums"]["instrument_type"]
-          option_contract_id: string | null
-          order_type: Database["public"]["Enums"]["order_type"]
-          raw_broker_request: Json | null
-          raw_broker_response: Json | null
-          requested_price: number | null
-          requested_qty: number
-          side: Database["public"]["Enums"]["trade_side"]
-          status: Database["public"]["Enums"]["trade_status"]
-          strategy_id: string | null
-          submitted_at: string | null
-          symbol: string
-          user_id: string
+          option_symbol: string
+          option_type: string
+          price: number
+          quantity: number
+          root_symbol: string
+          side: string
+          status: string | null
+          strike: number
+          subscription_id: string | null
+          theta: number | null
         }
         Insert: {
-          average_fill_price?: number | null
-          broker_account_id: string
-          broker_execution_id?: string | null
-          broker_order_id?: string | null
-          canceled_at?: string | null
           created_at?: string
-          error_message?: string | null
-          fees?: number | null
-          filled_at?: string | null
-          filled_qty?: number | null
+          delta?: number | null
+          expiry: string
+          gamma?: number | null
           id?: string
-          instrument?: Database["public"]["Enums"]["instrument_type"]
-          option_contract_id?: string | null
-          order_type?: Database["public"]["Enums"]["order_type"]
-          raw_broker_request?: Json | null
-          raw_broker_response?: Json | null
-          requested_price?: number | null
-          requested_qty: number
-          side: Database["public"]["Enums"]["trade_side"]
-          status?: Database["public"]["Enums"]["trade_status"]
-          strategy_id?: string | null
-          submitted_at?: string | null
-          symbol: string
-          user_id: string
+          option_symbol: string
+          option_type: string
+          price: number
+          quantity: number
+          root_symbol: string
+          side: string
+          status?: string | null
+          strike: number
+          subscription_id?: string | null
+          theta?: number | null
         }
         Update: {
-          average_fill_price?: number | null
-          broker_account_id?: string
-          broker_execution_id?: string | null
-          broker_order_id?: string | null
-          canceled_at?: string | null
           created_at?: string
-          error_message?: string | null
-          fees?: number | null
-          filled_at?: string | null
-          filled_qty?: number | null
+          delta?: number | null
+          expiry?: string
+          gamma?: number | null
           id?: string
-          instrument?: Database["public"]["Enums"]["instrument_type"]
-          option_contract_id?: string | null
-          order_type?: Database["public"]["Enums"]["order_type"]
-          raw_broker_request?: Json | null
-          raw_broker_response?: Json | null
-          requested_price?: number | null
-          requested_qty?: number
-          side?: Database["public"]["Enums"]["trade_side"]
-          status?: Database["public"]["Enums"]["trade_status"]
-          strategy_id?: string | null
-          submitted_at?: string | null
-          symbol?: string
-          user_id?: string
+          option_symbol?: string
+          option_type?: string
+          price?: number
+          quantity?: number
+          root_symbol?: string
+          side?: string
+          status?: string | null
+          strike?: number
+          subscription_id?: string | null
+          theta?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "trades_broker_account_id_fkey"
-            columns: ["broker_account_id"]
-            isOneToOne: false
-            referencedRelation: "broker_accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "trades_option_contract_id_fkey"
-            columns: ["option_contract_id"]
-            isOneToOne: false
-            referencedRelation: "option_contracts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "trades_strategy_id_fkey"
-            columns: ["strategy_id"]
-            isOneToOne: false
-            referencedRelation: "strategies"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
-      [_ in never]: never
+      portfolio_performance: {
+        Row: {
+          avg_portfolio_delta: number | null
+          avg_portfolio_theta: number | null
+          last_trade_time: string | null
+          root_symbol: string | null
+          total_contracts: number | null
+          total_premium_spent: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
