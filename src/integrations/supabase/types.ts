@@ -1306,6 +1306,69 @@ export type Database = {
           },
         ]
       }
+      system_commands: {
+        Row: {
+          command: string
+          created_at: string
+          id: string
+          status: string | null
+        }
+        Insert: {
+          command: string
+          created_at?: string
+          id?: string
+          status?: string | null
+        }
+        Update: {
+          command?: string
+          created_at?: string
+          id?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
+      system_logs: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          source: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          source?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          source?: string | null
+        }
+        Relationships: []
+      }
+      system_state: {
+        Row: {
+          active_symbol: string | null
+          id: number
+          is_running: boolean | null
+          last_heartbeat: string | null
+        }
+        Insert: {
+          active_symbol?: string | null
+          id?: number
+          is_running?: boolean | null
+          last_heartbeat?: string | null
+        }
+        Update: {
+          active_symbol?: string | null
+          id?: number
+          is_running?: boolean | null
+          last_heartbeat?: string | null
+        }
+        Relationships: []
+      }
       trades: {
         Row: {
           created_at: string
