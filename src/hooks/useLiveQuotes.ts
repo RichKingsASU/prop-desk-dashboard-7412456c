@@ -1,16 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-
-export type LiveQuote = {
-  symbol: string;
-  bid_price: number | null;
-  bid_size: number | null;
-  ask_price: number | null;
-  ask_size: number | null;
-  last_trade_price: number | null;
-  last_trade_size: number | null;
-  last_update_ts: string;
-};
+import { apiClient, type LiveQuote } from "@/api/client";
 
 export function useLiveQuotes() {
   const [quotes, setQuotes] = useState<LiveQuote[]>([]);
@@ -19,18 +8,15 @@ export function useLiveQuotes() {
 
   useEffect(() => {
     let isMounted = true;
+    let intervalId: number | null = null;
 
-    async function loadInitial() {
+    async function load() {
       try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from("live_quotes")
-          .select("*")
-          .order("symbol", { ascending: true });
-
-        if (error) throw error;
+        if (isMounted) setLoading(true);
+        const data = await apiClient.getLiveQuotes("*");
         if (!isMounted) return;
-        setQuotes((data || []) as LiveQuote[]);
+        setQuotes((data || []).slice().sort((a, b) => a.symbol.localeCompare(b.symbol)));
+        setError(null);
       } catch (err: any) {
         if (!isMounted) return;
         setError(err.message ?? "Failed to load live quotes");
@@ -39,37 +25,14 @@ export function useLiveQuotes() {
       }
     }
 
-    loadInitial();
+    load();
 
-    // Subscribe to real-time updates
-    const channel = supabase
-      .channel("live_quotes_changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "live_quotes",
-        },
-        (payload) => {
-          const newRow = payload.new as LiveQuote;
-          setQuotes((prev) => {
-            // Upsert in local state by symbol
-            const idx = prev.findIndex((q) => q.symbol === newRow.symbol);
-            if (idx === -1) {
-              return [...prev, newRow].sort((a, b) => a.symbol.localeCompare(b.symbol));
-            }
-            const copy = [...prev];
-            copy[idx] = newRow;
-            return copy;
-          });
-        }
-      )
-      .subscribe();
+    // TODO(realtime): Replace polling with backend WS at VITE_WS_BASE_URL.
+    intervalId = window.setInterval(load, 5000);
 
     return () => {
       isMounted = false;
-      supabase.removeChannel(channel);
+      if (intervalId) window.clearInterval(intervalId);
     };
   }, []);
 

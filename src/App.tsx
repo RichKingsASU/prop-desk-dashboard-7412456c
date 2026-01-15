@@ -2,10 +2,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LayoutProvider } from "./contexts/LayoutContext";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/auth/useAuth";
 import { MainLayout } from "./layouts/MainLayout";
 import Index from "./pages/Index";
 import F1Dashboard from "./pages/F1Dashboard";
@@ -17,7 +18,7 @@ import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import TestHub from "./pages/test/TestHub";
-import SupabaseDashboard from "./pages/test/SupabaseDashboard";
+import DataDashboard from "./pages/test/DataDashboard";
 import OpsLayout from "./pages/ops/OpsLayout";
 import OpsOverview from "./pages/ops/OpsOverview";
 import OptionsExplorer from "./pages/ops/OptionsExplorer";
@@ -26,6 +27,19 @@ import JobHealth from "./pages/ops/JobHealth";
 import MissionControl from "./pages/MissionControl";
 
 const queryClient = new QueryClient();
+
+function Protected({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  if (!user) return <Navigate to="/auth" replace />;
+  return <>{children}</>;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -38,23 +52,100 @@ const App = () => (
               <Sonner />
               <MainLayout>
                 <Routes>
-                  <Route path="/" element={<F1Dashboard />} />
                   <Route path="/auth" element={<Auth />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/legacy" element={<Index />} />
-                  <Route path="/console/:symbol" element={<Console />} />
-                  <Route path="/options" element={<Options />} />
-                  <Route path="/options-dashboard" element={<OptionsDashboard />} />
-                  <Route path="/developer" element={<Developer />} />
-                  <Route path="/mission-control" element={<MissionControl />} />
-                  <Route path="/ops" element={<OpsLayout />}>
+                  <Route
+                    path="/"
+                    element={
+                      <Protected>
+                        <F1Dashboard />
+                      </Protected>
+                    }
+                  />
+                  <Route
+                    path="/settings"
+                    element={
+                      <Protected>
+                        <Settings />
+                      </Protected>
+                    }
+                  />
+                  <Route
+                    path="/legacy"
+                    element={
+                      <Protected>
+                        <Index />
+                      </Protected>
+                    }
+                  />
+                  <Route
+                    path="/console/:symbol"
+                    element={
+                      <Protected>
+                        <Console />
+                      </Protected>
+                    }
+                  />
+                  <Route
+                    path="/options"
+                    element={
+                      <Protected>
+                        <Options />
+                      </Protected>
+                    }
+                  />
+                  <Route
+                    path="/options-dashboard"
+                    element={
+                      <Protected>
+                        <OptionsDashboard />
+                      </Protected>
+                    }
+                  />
+                  <Route
+                    path="/developer"
+                    element={
+                      <Protected>
+                        <Developer />
+                      </Protected>
+                    }
+                  />
+                  <Route
+                    path="/mission-control"
+                    element={
+                      <Protected>
+                        <MissionControl />
+                      </Protected>
+                    }
+                  />
+                  <Route
+                    path="/ops"
+                    element={
+                      <Protected>
+                        <OpsLayout />
+                      </Protected>
+                    }
+                  >
                     <Route index element={<OpsOverview />} />
                     <Route path="options" element={<OptionsExplorer />} />
                     <Route path="news" element={<NewsViewer />} />
                     <Route path="jobs" element={<JobHealth />} />
                   </Route>
-                  <Route path="/test" element={<TestHub />} />
-                  <Route path="/test/supabase-dashboard" element={<SupabaseDashboard />} />
+                  <Route
+                    path="/test"
+                    element={
+                      <Protected>
+                        <TestHub />
+                      </Protected>
+                    }
+                  />
+                  <Route
+                    path="/test/data-dashboard"
+                    element={
+                      <Protected>
+                        <DataDashboard />
+                      </Protected>
+                    }
+                  />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

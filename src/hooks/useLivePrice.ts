@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient, type LiveQuote, type MarketBar1m } from '@/api/client';
 
 interface LivePriceData {
   price: number;
@@ -28,16 +28,11 @@ export function useLivePrice(symbol: string): LivePriceData & { loading: boolean
   useEffect(() => {
     const fetchOpenPrice = async () => {
       try {
-        const { data, error } = await supabase
-          .from('market_data_1m')
-          .select('open, ts')
-          .eq('symbol', symbol)
-          .order('ts', { ascending: true })
-          .limit(1);
-
-        if (!error && data && data.length > 0) {
-          setOpenPrice(data[0].open);
-        }
+        // TODO(api): Provide a dedicated "day open" endpoint to avoid pulling a window of bars.
+        const bars = (await apiClient.getMarketData1mLatest({ symbol, limit: 200 })) as MarketBar1m[];
+        const sorted = [...bars].sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
+        const oldest = sorted[0];
+        if (oldest) setOpenPrice(oldest.open);
       } catch (err) {
         console.error('Error fetching open price:', err);
       }
@@ -48,17 +43,17 @@ export function useLivePrice(symbol: string): LivePriceData & { loading: boolean
 
   // Subscribe to real-time quote updates
   useEffect(() => {
-    const fetchInitialQuote = async () => {
+    let isMounted = true;
+    let intervalId: number | null = null;
+
+    const loadQuote = async () => {
+      if (!isMounted) return;
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('live_quotes')
-          .select('*')
-          .eq('symbol', symbol)
-          .maybeSingle();
-
-        if (!error && data) {
-          const currentPrice = data.last_trade_price || data.bid_price || 0;
+        const quotes = (await apiClient.getLiveQuotes([symbol])) as LiveQuote[];
+        const q = quotes[0];
+        if (q) {
+          const currentPrice = q.last_trade_price || q.bid_price || 0;
           const open = openPrice || currentPrice;
           const change = currentPrice - open;
           const changePct = open > 0 ? (change / open) * 100 : 0;
@@ -77,40 +72,14 @@ export function useLivePrice(symbol: string): LivePriceData & { loading: boolean
       }
     };
 
-    fetchInitialQuote();
+    loadQuote();
 
-    // Real-time subscription
-    const channel = supabase
-      .channel(`live-price-${symbol}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'live_quotes',
-          filter: `symbol=eq.${symbol}`,
-        },
-        (payload) => {
-          const data = payload.new as any;
-          if (data) {
-            const currentPrice = data.last_trade_price || data.bid_price || 0;
-            const open = openPrice || currentPrice;
-            const change = currentPrice - open;
-            const changePct = open > 0 ? (change / open) * 100 : 0;
-
-            setPriceData({
-              price: currentPrice,
-              change,
-              changePct,
-              isLive: true,
-            });
-          }
-        }
-      )
-      .subscribe();
+    // TODO(realtime): Replace polling with backend WS at VITE_WS_BASE_URL.
+    intervalId = window.setInterval(loadQuote, 3000);
 
     return () => {
-      supabase.removeChannel(channel);
+      isMounted = false;
+      if (intervalId) window.clearInterval(intervalId);
     };
   }, [symbol, openPrice]);
 

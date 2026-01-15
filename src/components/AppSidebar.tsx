@@ -32,7 +32,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/auth/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const tradingRoutes = [
@@ -47,7 +47,7 @@ const developmentRoutes = [
   { title: "Developer", url: "/developer", icon: Wrench },
   { title: "Ops Dashboard", url: "/ops", icon: Activity },
   { title: "Test Hub", url: "/test", icon: FlaskConical },
-  { title: "Supabase", url: "/test/supabase-dashboard", icon: Database },
+  { title: "Data API", url: "/test/data-dashboard", icon: Database },
 ];
 
 const legacyRoutes = [

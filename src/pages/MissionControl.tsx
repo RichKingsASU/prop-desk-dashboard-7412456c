@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { apiClient } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { Rocket, Play, Square } from "lucide-react";
 import { toast } from "sonner";
@@ -108,47 +109,33 @@ export default function MissionControl() {
 
   // Poll system state + logs until WS exists.
   useEffect(() => {
-    let cancelled = false;
+    let isMounted = true;
+    let intervalId: number | null = null;
 
-    const refresh = async () => {
-      if (pollInFlightRef.current) return;
-      pollInFlightRef.current = true;
+    const fetchData = async () => {
       try {
-        const [statusRaw, logsRaw] = await Promise.all([
-          client.getSystemStatus().catch((e) => {
-            console.warn("[MissionControl] Failed to fetch system status:", e);
-            return null;
-          }),
-          // Prefer system logs; fall back to dev logs if system logs endpoint doesn't exist.
-          client
-            .getSystemLogs({ limit: 50, since: lastLogTsRef.current ?? undefined })
-            .catch(async () => await client.getDevLogs({ limit: 50, since: lastLogTsRef.current ?? undefined }))
-            .catch((e) => {
-              console.warn("[MissionControl] Failed to fetch logs:", e);
-              return [];
-            }),
-        ]);
+        const state = (await apiClient.getSystemState()) as any;
+        const logsData = (await apiClient.getSystemLogs(50)) as any[];
 
-        if (cancelled) return;
+        if (!isMounted) return;
 
-        const nextState = coerceSystemState(statusRaw);
-        if (nextState) setSystemState(nextState);
-
-        const nextLogs = coerceLogs(logsRaw);
-        setLogs(nextLogs);
-        lastLogTsRef.current = nextLogs.length ? nextLogs[nextLogs.length - 1].created_at : lastLogTsRef.current;
-
-        setIsLoading(false);
+        setSystemState((state?.system_state ?? state) as SystemState);
+        setLogs((logsData || []).slice().reverse() as SystemLog[]);
       } finally {
-        pollInFlightRef.current = false;
+        if (isMounted) setIsLoading(false);
       }
     };
+
+    fetchData();
+
+    // TODO(realtime): Replace polling with backend WS topics for system state/logs.
+    intervalId = window.setInterval(fetchData, 5000);
 
     refresh();
     const id = window.setInterval(refresh, pollIntervalMs);
     return () => {
-      cancelled = true;
-      window.clearInterval(id);
+      isMounted = false;
+      if (intervalId) window.clearInterval(intervalId);
     };
   }, [pollIntervalMs]);
 
@@ -162,7 +149,7 @@ export default function MissionControl() {
   const sendCommand = async (command: "START" | "STOP") => {
     setIsSendingCommand(true);
     try {
-      await client.postSystemCommand(command);
+      await apiClient.postSystemCommand(command);
       toast.success(`${command} command sent`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -314,7 +301,7 @@ export default function MissionControl() {
       <div className="text-xs text-green-700 border-t border-green-900 pt-4">
         <span>AgentTrader v1.0</span>
         <span className="mx-2">|</span>
-        <span>Connected to backend (polling)</span>
+        <span>Connected to backend API</span>
       </div>
     </div>
   );

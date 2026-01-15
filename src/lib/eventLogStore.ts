@@ -1,7 +1,8 @@
 import { useSyncExternalStore, useCallback } from 'react';
+import { apiClient } from '@/api/client';
 
 export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
-export type LogSource = 'supabase' | 'alpaca' | 'exchange' | 'system' | 'ui';
+export type LogSource = 'backend' | 'alpaca' | 'exchange' | 'system' | 'ui';
 
 export interface EventLog {
   id: string;
@@ -22,7 +23,6 @@ export interface PersistenceStatus {
 
 const MAX_LOGS = 500;
 const FLUSH_INTERVAL_MS = 1000;
-const SUPABASE_URL = 'https://nugswladoficdyvygstg.supabase.co';
 
 // In-memory store
 let logs: EventLog[] = [];
@@ -30,7 +30,6 @@ let listeners: Set<() => void> = new Set();
 
 // Persistence state
 let isPersistenceEnabled = false;
-let opsToken: string | null = null;
 let lastFlushTime: Date | null = null;
 let lastError: string | null = null;
 let pendingLogs: EventLog[] = [];
@@ -63,7 +62,7 @@ const notifyPersistenceListeners = () => {
 
 // Flush pending logs to edge function
 const flushLogs = async () => {
-  if (pendingLogs.length === 0 || !opsToken) return;
+  if (pendingLogs.length === 0) return;
 
   const logsToFlush = [...pendingLogs];
   pendingLogs = [];
@@ -78,19 +77,7 @@ const flushLogs = async () => {
       meta: log.meta || {}
     }));
 
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/persist-dev-logs`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-OPS-TOKEN': opsToken
-      },
-      body: JSON.stringify({ logs: payload })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
-    }
+    await apiClient.postDevEventLogs(payload);
 
     lastFlushTime = new Date();
     lastError = null;
@@ -184,43 +171,18 @@ export const persistenceStore = {
     return () => persistenceListeners.delete(listener);
   },
 
-  togglePersistence: (enabled: boolean, token?: string) => {
+  togglePersistence: (enabled: boolean) => {
     isPersistenceEnabled = enabled;
-    
-    if (token) {
-      opsToken = token;
-      localStorage.setItem('ops_log_token', token);
-    } else if (enabled && !opsToken) {
-      // Try to load from localStorage
-      opsToken = localStorage.getItem('ops_log_token');
-    }
 
-    if (enabled && opsToken) {
+    if (enabled) {
       startFlushInterval();
       lastError = null;
     } else {
       stopFlushInterval();
-      if (!opsToken && enabled) {
-        lastError = 'No OPS token configured';
-      }
     }
 
     notifyPersistenceListeners();
-    return opsToken !== null;
-  },
-
-  getStoredToken: (): string | null => {
-    return localStorage.getItem('ops_log_token');
-  },
-
-  clearToken: () => {
-    opsToken = null;
-    localStorage.removeItem('ops_log_token');
-    if (isPersistenceEnabled) {
-      isPersistenceEnabled = false;
-      stopFlushInterval();
-    }
-    notifyPersistenceListeners();
+    return enabled;
   },
 
   forceFlush: async () => {

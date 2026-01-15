@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/auth/useAuth";
+import { apiClient } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,7 @@ import { toast } from "sonner";
 
 export default function Settings() {
   const navigate = useNavigate();
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [displayName, setDisplayName] = useState("");
@@ -56,6 +56,13 @@ export default function Settings() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    // TODO(api): Provide an authenticated avatar upload flow.
+    // The UI must not write directly to a DB/storage bucket. Backend should expose:
+    // - POST /profiles/me/avatar (returns upload URL or accepts multipart)
+    // - PATCH /profiles/me to set avatar_url
+    setError("Avatar upload is not available yet. Backend endpoint required.");
+    return;
+
     // Validate file
     if (!file.type.startsWith("image/")) {
       setError("Please upload an image file");
@@ -69,37 +76,8 @@ export default function Settings() {
     setUploading(true);
     setError(null);
 
-    try {
-      const fileExt = file.name.split(".").pop();
-      const filePath = `${user.id}/avatar.${fileExt}`;
-
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(filePath);
-
-      // Update profile with new avatar URL
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ avatar_url: publicUrl })
-        .eq("id", user.id);
-
-      if (updateError) throw updateError;
-
-      setAvatarUrl(publicUrl);
-      toast.success("Avatar updated successfully");
-    } catch (err: any) {
-      setError(err.message || "Failed to upload avatar");
-    } finally {
-      setUploading(false);
-    }
+    // Unreachable (kept for future integration).
+    setUploading(false);
   };
 
   const handleSave = async () => {
@@ -110,15 +88,11 @@ export default function Settings() {
     setSuccess(false);
 
     try {
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({
-          display_name: displayName.trim() || null,
-          trading_mode: tradingMode,
-        })
-        .eq("id", user.id);
-
-      if (updateError) throw updateError;
+      await apiClient.patchProfileMe({
+        display_name: displayName.trim() || null,
+        trading_mode: tradingMode,
+      });
+      await refreshProfile();
 
       setSuccess(true);
       toast.success("Settings saved successfully");
