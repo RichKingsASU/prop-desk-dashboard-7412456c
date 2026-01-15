@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useLiveQuotes } from './useLiveQuotes';
-import { supabase } from '@/integrations/supabase/client';
+import { useEffect, useMemo, useState } from "react";
+import { useLiveQuotes } from "./useLiveQuotes";
+import { client } from "@/integrations/backend/client";
 
 export interface WatchlistItem {
   symbol: string;
@@ -28,12 +28,53 @@ interface SparklineData {
   [symbol: string]: number[];
 }
 
-export function useLiveWatchlist() {
-  const { quotes, loading: quotesLoading } = useLiveQuotes();
+function coerceNumber(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v))) return Number(v);
+  return null;
+}
+
+function coerceString(v: unknown): string | null {
+  return typeof v === "string" && v.trim() ? v : null;
+}
+
+function toIso(v: unknown): string | null {
+  if (typeof v === "string" && v.trim()) return v;
+  if (typeof v === "number") return new Date(v).toISOString();
+  if (v instanceof Date) return v.toISOString();
+  return null;
+}
+
+type MarketBar = { symbol: string; ts: string; close: number };
+
+function coerceBars1m(raw: unknown): MarketBar[] {
+  const arr = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === "object" && Array.isArray((raw as any).bars)
+    ? (raw as any).bars
+    : raw && typeof raw === "object" && Array.isArray((raw as any).data)
+    ? (raw as any).data
+    : [];
+
+  const bars: MarketBar[] = arr
+    .map((item: any) => {
+      const symbol = coerceString(item?.symbol ?? item?.S) ?? null;
+      const ts = toIso(item?.ts ?? item?.t ?? item?.time ?? item?.timestamp) ?? null;
+      const close = coerceNumber(item?.close ?? item?.c);
+      if (!symbol || !ts || close == null) return null;
+      return { symbol, ts, close };
+    })
+    .filter(Boolean) as MarketBar[];
+
+  return bars;
+}
+
+export function useLiveWatchlist(options?: { sparklinePollMs?: number; quotesPollMs?: number }) {
+  const { quotes, loading: quotesLoading } = useLiveQuotes({ pollMs: options?.quotesPollMs });
   const [sparklines, setSparklines] = useState<SparklineData>({});
   const [sparklinesLoading, setSparklinesLoading] = useState(false);
 
-  // Fetch sparkline data from market_data_1m for symbols in quotes
+  // Fetch sparkline data from 1m bars for symbols in quotes
   useEffect(() => {
     const fetchSparklines = async () => {
       if (quotes.length === 0) return;
@@ -42,24 +83,19 @@ export function useLiveWatchlist() {
       try {
         const symbols = quotes.map(q => q.symbol);
         
-        // Fetch last 6 bars per symbol
-        const { data, error } = await supabase
-          .from('market_data_1m')
-          .select('symbol, close, ts')
-          .in('symbol', symbols)
-          .order('ts', { ascending: false })
-          .limit(symbols.length * 6);
+        // Ask for a bit more than needed; we'll slice client-side.
+        const raw = await client.getMarketBars1m({ symbols, limit: symbols.length * 20 });
+        const bars = coerceBars1m(raw);
 
-        if (error) throw error;
-
-        // Group by symbol and take last 6 closes
+        // Group by symbol and take last 6 closes (by timestamp desc)
         const grouped: SparklineData = {};
         symbols.forEach(sym => {
-          const symbolBars = data
-            ?.filter(d => d.symbol === sym)
+          const symbolBars = bars
+            .filter((b) => b.symbol === sym)
+            .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
             .slice(0, 6)
-            .reverse() || [];
-          grouped[sym] = symbolBars.map(b => b.close);
+            .reverse();
+          grouped[sym] = symbolBars.map((b) => b.close);
         });
 
         setSparklines(grouped);
@@ -72,10 +108,11 @@ export function useLiveWatchlist() {
 
     fetchSparklines();
     
-    // Refresh sparklines every 60 seconds
-    const interval = setInterval(fetchSparklines, 60000);
+    // Refresh sparklines (bars) every 5-15s (configurable)
+    const pollMs = Math.max(1000, options?.sparklinePollMs ?? 10_000);
+    const interval = setInterval(fetchSparklines, pollMs);
     return () => clearInterval(interval);
-  }, [quotes]);
+  }, [quotes, options?.sparklinePollMs]);
 
   // Build watchlist items from live quotes
   const watchlist = useMemo((): WatchlistItem[] => {
