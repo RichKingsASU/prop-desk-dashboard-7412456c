@@ -72,7 +72,10 @@ async function tryPathsJson(
 }
 
 export function createBackendClient(options?: BackendClientOptions) {
-  const baseUrl = normalizeBaseUrl(options?.baseUrl ?? import.meta.env.VITE_BACKEND_URL);
+  // Intentionally does NOT read import.meta.env / process.env.
+  const w = window as unknown as { __RUNTIME_CONFIG__?: { BACKEND_URL?: string } };
+  const runtimeBaseUrl = (w.__RUNTIME_CONFIG__?.BACKEND_URL ?? "").trim();
+  const baseUrl = normalizeBaseUrl(options?.baseUrl ?? runtimeBaseUrl);
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
   return {

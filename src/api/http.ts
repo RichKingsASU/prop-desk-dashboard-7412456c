@@ -1,6 +1,5 @@
 import { signOut } from "firebase/auth";
-import { auth } from "@/auth/firebase";
-import { env } from "@/config/env";
+import { getFirebaseAuth } from "@/auth/firebase";
 
 export class ApiError extends Error {
   status: number;
@@ -19,6 +18,7 @@ export class ApiError extends Error {
 type Json = Record<string, unknown> | unknown[] | string | number | boolean | null;
 
 async function getAuthHeader(): Promise<string | null> {
+  const auth = await getFirebaseAuth();
   const user = auth.currentUser;
   if (!user) return null;
   const token = await user.getIdToken();
@@ -28,6 +28,18 @@ async function getAuthHeader(): Promise<string | null> {
 function joinUrl(base: string, path: string): string {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${base}${normalizedPath}`;
+}
+
+function normalizeBaseUrl(url: string): string {
+  return url.replace(/\/+$/, "");
+}
+
+function getApiBaseUrl(): string {
+  // Prefer runtime-injected config, otherwise fall back to same-origin relative.
+  // Intentionally does NOT read import.meta.env / process.env.
+  const w = window as unknown as { __RUNTIME_CONFIG__?: { API_BASE_URL?: string } };
+  const raw = (w.__RUNTIME_CONFIG__?.API_BASE_URL ?? "").trim();
+  return raw ? normalizeBaseUrl(raw) : "";
 }
 
 export type ApiFetchOptions = {
@@ -62,7 +74,7 @@ export async function apiFetch<T = unknown>(
     headers.set("Authorization", authHeader);
   }
 
-  const res = await fetch(joinUrl(env.apiBaseUrl, path), {
+  const res = await fetch(joinUrl(getApiBaseUrl(), path), {
     ...init,
     headers,
   });
@@ -70,7 +82,7 @@ export async function apiFetch<T = unknown>(
   if (res.status === 401 && requireAuth) {
     // Token revoked/expired or backend rejected; force re-auth.
     try {
-      await signOut(auth);
+      await signOut(await getFirebaseAuth());
     } finally {
       window.location.assign("/auth");
     }
