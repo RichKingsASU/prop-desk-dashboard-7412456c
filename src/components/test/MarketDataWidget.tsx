@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { BarChart3, Loader2, AlertCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 interface MarketBar {
   symbol: string;
@@ -21,25 +20,9 @@ const MarketDataWidget = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchBars = async () => {
-      try {
-        const { data, error: fetchError } = await supabase
-          .from("market_data_1m")
-          .select("symbol, ts, open, high, low, close, volume")
-          .order("ts", { ascending: false })
-          .limit(200);
-
-        if (fetchError) throw fetchError;
-        setBars(data || []);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch market data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBars();
+    setBars([]);
+    setError("Market data is unavailable (no data backend configured).");
+    setLoading(false);
   }, []);
 
   const formatPrice = (price: number) => `$${price.toFixed(2)}`;

@@ -108,13 +108,16 @@ function getInitials(name: string | null, email: string | null): string {
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const { user, profile, loading, signOut } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");
   };
+
+  const tradingMode =
+    user ? (localStorage.getItem(`tradingMode:${user.uid}`) === "live" ? "live" : "paper") : "paper";
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -188,16 +191,16 @@ export function AppSidebar() {
               <button className="flex items-center gap-3 w-full px-2 py-2 rounded-md hover:bg-sidebar-accent transition-colors">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                    {getInitials(profile?.display_name ?? null, user.email ?? null)}
+                    {getInitials(user.displayName ?? null, user.email ?? null)}
                   </AvatarFallback>
                 </Avatar>
                 {!collapsed && (
                   <div className="flex-1 text-left overflow-hidden">
                     <p className="text-sm font-medium text-sidebar-foreground truncate">
-                      {profile?.display_name || user.email?.split("@")[0]}
+                      {user.displayName || user.email?.split("@")[0]}
                     </p>
                     <p className="text-xs text-sidebar-foreground/60 truncate">
-                      {profile?.trading_mode === "live" ? "Live Trading" : "Paper Trading"}
+                      {tradingMode === "live" ? "Live Trading" : "Paper Trading"}
                     </p>
                   </div>
                 )}

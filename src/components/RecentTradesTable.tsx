@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import {
   Table,
@@ -29,46 +28,10 @@ export function RecentTradesTable() {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    // Fetch initial trades
-    const fetchTrades = async () => {
-      const { data, error } = await supabase
-        .from("trades")
-        .select("id, created_at, root_symbol, side, strike, option_type, expiry, price, delta")
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      if (error) {
-        console.error("Error fetching trades:", error);
-      } else {
-        setTrades(data || []);
-      }
-      setLoading(false);
-    };
-
-    fetchTrades();
-
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel("trades-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "trades",
-        },
-        (payload) => {
-          const newTrade = payload.new as Trade;
-          setTrades((prev) => [newTrade, ...prev].slice(0, 50));
-        }
-      )
-      .subscribe((status) => {
-        setIsConnected(status === "SUBSCRIBED");
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Trades are unavailable without a configured data backend.
+    setTrades([]);
+    setIsConnected(false);
+    setLoading(false);
   }, []);
 
   const formatTime = (timestamp: string) => {

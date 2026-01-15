@@ -2,21 +2,13 @@ import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Database, CheckCircle, XCircle, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 const StatusBanner = () => {
   const [status, setStatus] = useState<"checking" | "connected" | "error">("checking");
 
   useEffect(() => {
-    const checkConnection = async () => {
-      try {
-        const { error } = await supabase.from("paper_trades").select("id").limit(1);
-        setStatus(error ? "error" : "connected");
-      } catch {
-        setStatus("error");
-      }
-    };
-    checkConnection();
+    // Data backend is not configured in this build.
+    setStatus("error");
   }, []);
 
   return (
@@ -27,7 +19,7 @@ const StatusBanner = () => {
             <Database className="h-6 w-6 text-primary" />
             <div>
               <h1 className="text-xl font-bold text-foreground">AgentTrader Hybrid Dashboard</h1>
-              <p className="text-sm text-muted-foreground">Data source: Supabase PostgreSQL</p>
+              <p className="text-sm text-muted-foreground">Data source: Not configured</p>
             </div>
           </div>
           
@@ -43,7 +35,7 @@ const StatusBanner = () => {
         </div>
         
         <p className="text-xs text-muted-foreground mt-2">
-          Backend ingestion loops and Alpaca paper auth are assumed running. Tables: market_data_1m, paper_trades, live_quotes
+          Configure a backend ingestion/data source to enable market data and paper trades widgets.
         </p>
       </CardContent>
     </Card>
