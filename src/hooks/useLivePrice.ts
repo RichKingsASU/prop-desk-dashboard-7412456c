@@ -96,7 +96,6 @@ export function useLivePrice(
       if (inFlight) return;
       inFlight = true;
       try {
-      try {
         if (!cancelled) setLoading(true);
         const raw = await client.getMarketBars1m({ symbols: [symbol], limit: 500 });
         const bars = coerceBars1m(raw, symbol);
