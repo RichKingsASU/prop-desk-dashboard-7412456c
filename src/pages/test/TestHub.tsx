@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Database, Activity, BarChart3, ArrowLeft } from "lucide-react";
+import { Activity, ArrowLeft } from "lucide-react";
 
 const TestHub = () => {
   return (
@@ -18,30 +18,10 @@ const TestHub = () => {
 
         <h1 className="text-3xl font-bold text-foreground mb-2">Test Hub</h1>
         <p className="text-muted-foreground mb-8">
-          Development experiments and Supabase integration testing
+          Development experiments and integration testing
         </p>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <Link to="/test/supabase-dashboard">
-            <Card className="hover:border-primary/50 transition-colors cursor-pointer">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Database className="h-5 w-5 text-primary" />
-                  Supabase Dashboard
-                </CardTitle>
-                <CardDescription>
-                  Live data from market_data_1m, paper_trades, and live_quotes tables
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-2">
-                  <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">Real-time</span>
-                  <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded">Polling</span>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
           <Card className="opacity-50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -49,7 +29,7 @@ const TestHub = () => {
                 WebSocket Test
               </CardTitle>
               <CardDescription>
-                Coming soon: Real-time Supabase subscriptions
+                Coming soon: Real-time subscriptions
               </CardDescription>
             </CardHeader>
             <CardContent>

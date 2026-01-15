@@ -1,7 +1,6 @@
 import { RefreshCw } from "lucide-react";
 import { RecentTradesTable } from "@/components/RecentTradesTable";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -109,12 +108,8 @@ export default function OptionsDashboard() {
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["portfolio-performance"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("portfolio_performance")
-        .select("*");
-
-      if (error) throw error;
-      return data as PortfolioPerformance[];
+      // TODO: wire to REST API once implemented.
+      return [] as PortfolioPerformance[];
     },
   });
 

@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,31 +69,8 @@ export default function Settings() {
     setError(null);
 
     try {
-      const fileExt = file.name.split(".").pop();
-      const filePath = `${user.id}/avatar.${fileExt}`;
-
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(filePath);
-
-      // Update profile with new avatar URL
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ avatar_url: publicUrl })
-        .eq("id", user.id);
-
-      if (updateError) throw updateError;
-
-      setAvatarUrl(publicUrl);
-      toast.success("Avatar updated successfully");
+      // Uploads are handled by the API service; UI wiring is pending.
+      setError("Avatar upload is not configured in this build yet.");
     } catch (err: any) {
       setError(err.message || "Failed to upload avatar");
     } finally {
@@ -110,16 +86,6 @@ export default function Settings() {
     setSuccess(false);
 
     try {
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({
-          display_name: displayName.trim() || null,
-          trading_mode: tradingMode,
-        })
-        .eq("id", user.id);
-
-      if (updateError) throw updateError;
-
       setSuccess(true);
       toast.success("Settings saved successfully");
       

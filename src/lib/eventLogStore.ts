@@ -1,7 +1,7 @@
 import { useSyncExternalStore, useCallback } from 'react';
 
 export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
-export type LogSource = 'supabase' | 'alpaca' | 'exchange' | 'system' | 'ui';
+export type LogSource = 'backend' | 'alpaca' | 'exchange' | 'system' | 'ui';
 
 export interface EventLog {
   id: string;
@@ -22,7 +22,7 @@ export interface PersistenceStatus {
 
 const MAX_LOGS = 500;
 const FLUSH_INTERVAL_MS = 1000;
-const SUPABASE_URL = 'https://nugswladoficdyvygstg.supabase.co';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || (import.meta as any).env?.VITE_API_URL || '';
 
 // In-memory store
 let logs: EventLog[] = [];
@@ -61,7 +61,7 @@ const notifyPersistenceListeners = () => {
   persistenceListeners.forEach(listener => listener());
 };
 
-// Flush pending logs to edge function
+// Flush pending logs to API
 const flushLogs = async () => {
   if (pendingLogs.length === 0 || !opsToken) return;
 
@@ -78,11 +78,11 @@ const flushLogs = async () => {
       meta: log.meta || {}
     }));
 
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/persist-dev-logs`, {
+    const response = await fetch(`${API_BASE_URL}/dev/logs`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-OPS-TOKEN': opsToken
+        Authorization: `Bearer ${opsToken}`
       },
       body: JSON.stringify({ logs: payload })
     });

@@ -1,32 +1,17 @@
-import { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, useMemo } from "react";
+import { apiFetch } from "@/services/apiClient";
 
 export interface OptionSnapshot {
   option_symbol: string;
   underlying_symbol: string;
   snapshot_time: string;
   inserted_at: string;
-  payload: {
-    strike?: number;
-    expiration?: string;
-    option_type?: 'call' | 'put';
-    bid?: number;
-    ask?: number;
-    last?: number;
-    volume?: number;
-    open_interest?: number;
-    iv?: number;
-    delta?: number;
-    gamma?: number;
-    theta?: number;
-    vega?: number;
-    [key: string]: unknown;
-  };
+  payload: Record<string, unknown>;
 }
 
 export interface SnapshotFilters {
   symbol: string;
-  optionType: 'all' | 'call' | 'put';
+  optionType: "all" | "call" | "put";
   strikeMin: number | null;
   strikeMax: number | null;
   expiration: string | null;
@@ -34,8 +19,8 @@ export interface SnapshotFilters {
 }
 
 const DEFAULT_FILTERS: SnapshotFilters = {
-  symbol: 'SPY',
-  optionType: 'all',
+  symbol: "SPY",
+  optionType: "all",
   strikeMin: null,
   strikeMax: null,
   expiration: null,
@@ -52,47 +37,33 @@ export function useOptionsSnapshots(initialFilters?: Partial<SnapshotFilters>) {
   const fetchSnapshots = async () => {
     setLoading(true);
     setError(null);
-
     try {
-      const now = new Date();
-      const timeWindowStart = new Date(now.getTime() - filters.timeWindowMinutes * 60 * 1000);
+      const params = new URLSearchParams();
+      params.set("symbol", filters.symbol);
+      if (filters.expiration) params.set("expiry", filters.expiration);
+      const resp = await apiFetch<{ snapshots: OptionSnapshot[] }>(`/market/options/snapshots?${params.toString()}`);
+      const data = Array.isArray(resp.snapshots) ? resp.snapshots : [];
 
-      let query = supabase
-        .from('alpaca_option_snapshots')
-        .select('*', { count: 'exact' })
-        .eq('underlying_symbol', filters.symbol)
-        .gte('snapshot_time', timeWindowStart.toISOString())
-        .order('snapshot_time', { ascending: false })
-        .limit(500);
+      // Client-side filtering (API stubs may not filter yet).
+      const filtered = data.filter((s) => {
+        const p = s.payload || {};
+        const optionType = (p as any).option_type as string | undefined;
+        const strike = typeof (p as any).strike === "number" ? ((p as any).strike as number) : null;
+        const expiration = typeof (p as any).expiration === "string" ? ((p as any).expiration as string) : null;
 
-      const { data, error: queryError, count } = await query;
-
-      if (queryError) throw queryError;
-
-      // Client-side filtering for JSONB fields
-      let filtered = (data || []) as OptionSnapshot[];
-
-      if (filters.optionType !== 'all') {
-        filtered = filtered.filter(s => s.payload?.option_type === filters.optionType);
-      }
-
-      if (filters.strikeMin !== null) {
-        filtered = filtered.filter(s => (s.payload?.strike || 0) >= filters.strikeMin!);
-      }
-
-      if (filters.strikeMax !== null) {
-        filtered = filtered.filter(s => (s.payload?.strike || 0) <= filters.strikeMax!);
-      }
-
-      if (filters.expiration) {
-        filtered = filtered.filter(s => s.payload?.expiration === filters.expiration);
-      }
+        if (filters.optionType !== "all" && optionType !== filters.optionType) return false;
+        if (filters.strikeMin !== null && strike !== null && strike < filters.strikeMin) return false;
+        if (filters.strikeMax !== null && strike !== null && strike > filters.strikeMax) return false;
+        if (filters.expiration && expiration && expiration !== filters.expiration) return false;
+        return true;
+      });
 
       setSnapshots(filtered);
-      setTotalCount(count || 0);
+      setTotalCount(filtered.length);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch snapshots');
+      setError(err instanceof Error ? err.message : "Failed to fetch snapshots");
       setSnapshots([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
@@ -100,29 +71,22 @@ export function useOptionsSnapshots(initialFilters?: Partial<SnapshotFilters>) {
 
   useEffect(() => {
     fetchSnapshots();
-  }, [filters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.symbol, filters.optionType, filters.strikeMin, filters.strikeMax, filters.expiration, filters.timeWindowMinutes]);
 
   const updateFilters = (newFilters: Partial<SnapshotFilters>) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
+    setFilters((prev) => ({ ...prev, ...newFilters }));
   };
 
-  // Get unique expirations from current data
   const availableExpirations = useMemo(() => {
     const exps = new Set<string>();
-    snapshots.forEach(s => {
-      if (s.payload?.expiration) exps.add(s.payload.expiration);
+    snapshots.forEach((s) => {
+      const exp = (s.payload as any)?.expiration;
+      if (typeof exp === "string" && exp) exps.add(exp);
     });
     return Array.from(exps).sort();
   }, [snapshots]);
 
-  return {
-    snapshots,
-    filters,
-    updateFilters,
-    loading,
-    error,
-    totalCount,
-    availableExpirations,
-    refresh: fetchSnapshots
-  };
+  return { snapshots, filters, updateFilters, loading, error, totalCount, availableExpirations, refresh: fetchSnapshots };
 }
+

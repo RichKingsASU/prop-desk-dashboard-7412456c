@@ -1,4 +1,0 @@
-project_id = "nugswladoficdyvygstg"
-
-[functions.persist-dev-logs]
-verify_jwt = false
