@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { logEvent } from '@/lib/eventLogStore';
+import { apiClient } from '@/api/client';
 
 export type ExchangeType = 'broker' | 'data-provider' | 'options-exchange';
 export type ExchangeStatus = 'active' | 'inactive' | 'degraded' | 'maintenance';
@@ -82,41 +82,33 @@ const REFERENCE_PROVIDERS: Exchange[] = [
     errorRate: 0,
     isFromDatabase: false
   },
-  {
-    id: 'supabase',
-    name: 'supabase',
-    displayName: 'Supabase (Database)',
-    type: 'data-provider',
-    status: 'active',
-    apiVersion: 'v1',
-    rateLimits: { requestsPerMinute: 1000, requestsUsed: 0, resetTime: new Date() },
-    capabilities: ['equities', 'options'],
-    streams: ['supabase-market-data', 'supabase-quotes', 'supabase-news', 'supabase-options-flow'],
-    lastHealthCheck: new Date(),
-    latencyMs: 15,
-    errorRate: 0,
-    isFromDatabase: false
-  }
 ];
+
+const BACKEND_API: Exchange = {
+  id: 'backend',
+  name: 'backend',
+  displayName: 'Backend API',
+  type: 'data-provider',
+  status: 'inactive',
+  apiVersion: 'v1',
+  rateLimits: { requestsPerMinute: 1000, requestsUsed: 0, resetTime: new Date() },
+  capabilities: ['equities', 'options', 'crypto'],
+  streams: [],
+  lastHealthCheck: new Date(),
+  latencyMs: 0,
+  errorRate: 0,
+  isFromDatabase: false,
+};
 
 export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load broker accounts from Supabase
+  // Load broker accounts from backend API
   useEffect(() => {
     const loadBrokerAccounts = async () => {
       try {
-        const { data: brokerAccounts, error } = await supabase
-          .from('broker_accounts')
-          .select('*');
-
-        if (error) {
-          console.error('Error loading broker accounts:', error);
-          // Fall back to reference providers only
-          setExchanges(REFERENCE_PROVIDERS);
-          return;
-        }
+        const brokerAccounts = (await apiClient.getBrokerAccounts()) as any[];
 
         // Map broker accounts to Exchange format
         const brokerExchanges: Exchange[] = (brokerAccounts || []).map(account => ({
@@ -135,18 +127,18 @@ export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             ? ['equities', 'options'] as Capability[]
             : ['equities', 'crypto'] as Capability[],
           streams: [],
-          lastHealthCheck: new Date(account.updated_at),
+          lastHealthCheck: new Date(account.updated_at || Date.now()),
           latencyMs: 0,
           errorRate: 0,
           isFromDatabase: true,
           brokerAccountId: account.id
         }));
 
-        // Combine database brokers with reference providers
-        setExchanges([...brokerExchanges, ...REFERENCE_PROVIDERS]);
+        // Combine database brokers with backend + reference providers
+        setExchanges([BACKEND_API, ...brokerExchanges, ...REFERENCE_PROVIDERS]);
       } catch (error) {
         console.error('Error in loadBrokerAccounts:', error);
-        setExchanges(REFERENCE_PROVIDERS);
+        setExchanges([BACKEND_API, ...REFERENCE_PROVIDERS]);
       } finally {
         setIsLoading(false);
       }
@@ -154,48 +146,44 @@ export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     loadBrokerAccounts();
 
-    // Subscribe to broker_accounts changes
-    const channel = supabase
-      .channel('broker-accounts-changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'broker_accounts' },
-        () => {
-          // Reload broker accounts when changes occur
-          loadBrokerAccounts();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // TODO(realtime): Subscribe to broker-account changes via backend WS.
+    const interval = setInterval(loadBrokerAccounts, 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  // Periodic health check for Supabase connection
+  // Periodic health check for backend API
   useEffect(() => {
     const checkHealth = async () => {
       const start = Date.now();
-      const { error } = await supabase.from('live_quotes').select('symbol').limit(1);
+      let ok = false;
+      let errorMessage: string | undefined;
+
+      try {
+        await apiClient.healthz();
+        ok = true;
+      } catch (e: any) {
+        errorMessage = e?.message || 'Unknown error';
+      }
+
       const latency = Date.now() - start;
-      
-      const newStatus = error ? 'degraded' : 'active';
+      const newStatus = ok ? 'active' : 'degraded';
       
       logEvent(
-        error ? 'warn' : 'info',
+        ok ? 'info' : 'warn',
         'exchange',
         'health',
-        `Supabase health check: ${newStatus}`,
-        { latencyMs: latency, error: error?.message }
+        `Backend health check: ${newStatus}`,
+        { latencyMs: latency, error: errorMessage }
       );
 
       setExchanges(prev => prev.map(ex => {
-        if (ex.id === 'supabase') {
+        if (ex.id === 'backend') {
           return {
             ...ex,
             status: newStatus,
             lastHealthCheck: new Date(),
             latencyMs: latency,
-            errorRate: error ? 0.1 : 0
+            errorRate: ok ? 0 : 0.1
           };
         }
         return ex;
@@ -243,17 +231,22 @@ export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const testConnection = useCallback(async (id: string): Promise<boolean> => {
     const exchange = exchanges.find(e => e.id === id);
     
-    // For Supabase, actually test the connection
-    if (exchange?.id === 'supabase') {
+    // For backend, actually test the connection
+    if (exchange?.id === 'backend') {
       setExchanges(prev => prev.map(e => 
         e.id === id ? { ...e, status: 'inactive' } : e
       ));
       
       const start = Date.now();
-      const { error } = await supabase.from('live_quotes').select('symbol').limit(1);
+      let success = false;
+      try {
+        await apiClient.healthz();
+        success = true;
+      } catch {
+        success = false;
+      }
       const latency = Date.now() - start;
       
-      const success = !error;
       setExchanges(prev => prev.map(e => 
         e.id === id ? { 
           ...e, 
@@ -265,15 +258,15 @@ export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return success;
     }
 
-    // For database brokers, just verify the record exists
+    // For broker accounts, verify the broker account is still returned by the API.
     if (exchange?.isFromDatabase && exchange.brokerAccountId) {
-      const { data } = await supabase
-        .from('broker_accounts')
-        .select('id')
-        .eq('id', exchange.brokerAccountId)
-        .single();
-      
-      const success = !!data;
+      let success = false;
+      try {
+        const accounts = (await apiClient.getBrokerAccounts()) as any[];
+        success = (accounts || []).some(a => a.id === exchange.brokerAccountId);
+      } catch {
+        success = false;
+      }
       setExchanges(prev => prev.map(e => 
         e.id === id ? { 
           ...e, 
@@ -284,16 +277,12 @@ export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return success;
     }
 
-    // For reference providers, simulate connection test
-    return new Promise(resolve => {
-      setTimeout(() => {
-        const success = Math.random() > 0.3; // 70% success rate for mock
-        setExchanges(prev => prev.map(e => 
-          e.id === id ? { ...e, status: success ? 'active' : 'inactive', lastHealthCheck: new Date() } : e
-        ));
-        resolve(success);
-      }, 1000);
-    });
+    // For reference providers, the UI does not perform direct connectivity checks.
+    // The backend should expose provider health in GET /system/state.
+    setExchanges(prev => prev.map(e =>
+      e.id === id ? { ...e, status: 'inactive', lastHealthCheck: new Date() } : e
+    ));
+    return false;
   }, [exchanges]);
 
   const getExchangeById = useCallback((id: string) => exchanges.find(e => e.id === id), [exchanges]);

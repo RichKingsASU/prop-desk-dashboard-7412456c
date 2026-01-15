@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/api/client';
 
 export interface TableFreshness {
   tableName: string;
@@ -44,114 +44,27 @@ export function useDataFreshness() {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
   const fetchFreshness = async () => {
-    const now = new Date();
-    const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
+    // TODO(api): Backend must provide freshness summaries in GET /system/state so the UI
+    // does not query DB tables directly.
+    const state = await apiClient.getSystemState();
 
-    const updates = await Promise.all([
-      // alpaca_option_snapshots
-      (async () => {
-        const [latestRes, countRes] = await Promise.all([
-          supabase
-            .from('alpaca_option_snapshots')
-            .select('inserted_at')
-            .order('inserted_at', { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-          supabase
-            .from('alpaca_option_snapshots')
-            .select('*', { count: 'exact', head: true })
-            .gte('inserted_at', fifteenMinutesAgo.toISOString())
-        ]);
-        
-        const lastTs = latestRes.data?.inserted_at ? new Date(latestRes.data.inserted_at) : null;
-        return {
-          tableName: 'alpaca_option_snapshots',
-          displayName: 'Options Snapshots',
-          lastRowTimestamp: lastTs,
-          rowCountLast15Min: countRes.count || 0,
-          status: getStatus(lastTs),
-          loading: false
-        } as TableFreshness;
-      })(),
+    const freshnessByName: Record<
+      string,
+      { last_ts?: string | null; count_15m?: number | null }
+    > = (state as any)?.data_freshness || (state as any)?.dataFreshness || {};
 
-      // news_events
-      (async () => {
-        const [latestRes, countRes] = await Promise.all([
-          supabase
-            .from('news_events')
-            .select('received_at')
-            .order('received_at', { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-          supabase
-            .from('news_events')
-            .select('*', { count: 'exact', head: true })
-            .gte('received_at', fifteenMinutesAgo.toISOString())
-        ]);
-        
-        const lastTs = latestRes.data?.received_at ? new Date(latestRes.data.received_at) : null;
-        return {
-          tableName: 'news_events',
-          displayName: 'News Events',
-          lastRowTimestamp: lastTs,
-          rowCountLast15Min: countRes.count || 0,
-          status: getStatus(lastTs),
-          loading: false
-        } as TableFreshness;
-      })(),
-
-      // live_quotes
-      (async () => {
-        const [latestRes, countRes] = await Promise.all([
-          supabase
-            .from('live_quotes')
-            .select('last_update_ts')
-            .order('last_update_ts', { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-          supabase
-            .from('live_quotes')
-            .select('*', { count: 'exact', head: true })
-            .gte('last_update_ts', fifteenMinutesAgo.toISOString())
-        ]);
-        
-        const lastTs = latestRes.data?.last_update_ts ? new Date(latestRes.data.last_update_ts) : null;
-        return {
-          tableName: 'live_quotes',
-          displayName: 'Live Quotes',
-          lastRowTimestamp: lastTs,
-          rowCountLast15Min: countRes.count || 0,
-          status: getStatus(lastTs),
-          loading: false
-        } as TableFreshness;
-      })(),
-
-      // market_data_1m
-      (async () => {
-        const [latestRes, countRes] = await Promise.all([
-          supabase
-            .from('market_data_1m')
-            .select('ts')
-            .order('ts', { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-          supabase
-            .from('market_data_1m')
-            .select('*', { count: 'exact', head: true })
-            .gte('ts', fifteenMinutesAgo.toISOString())
-        ]);
-        
-        const lastTs = latestRes.data?.ts ? new Date(latestRes.data.ts) : null;
-        return {
-          tableName: 'market_data_1m',
-          displayName: 'Market Data 1m',
-          lastRowTimestamp: lastTs,
-          rowCountLast15Min: countRes.count || 0,
-          status: getStatus(lastTs),
-          loading: false
-        } as TableFreshness;
-      })(),
-    ]);
+    const updates: TableFreshness[] = tables.map((t) => {
+      const entry = freshnessByName[t.tableName] || {};
+      const lastTs = entry.last_ts ? new Date(entry.last_ts) : null;
+      const rowCountLast15Min = typeof entry.count_15m === "number" ? entry.count_15m : 0;
+      return {
+        ...t,
+        lastRowTimestamp: lastTs,
+        rowCountLast15Min,
+        status: getStatus(lastTs),
+        loading: false,
+      };
+    });
 
     setTables(updates);
 

@@ -6,7 +6,7 @@ import LiveQuotesWidget from "@/components/test/LiveQuotesWidget";
 import MarketDataWidget from "@/components/test/MarketDataWidget";
 import PaperTradesWidget from "@/components/test/PaperTradesWidget";
 
-const SupabaseDashboard = () => {
+const DataDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="p-4 border-b border-border">
@@ -20,7 +20,7 @@ const SupabaseDashboard = () => {
 
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         <StatusBanner />
-        
+
         <div className="grid gap-6">
           <LiveQuotesWidget />
           <MarketDataWidget />
@@ -31,4 +31,5 @@ const SupabaseDashboard = () => {
   );
 };
 
-export default SupabaseDashboard;
+export default DataDashboard;
+

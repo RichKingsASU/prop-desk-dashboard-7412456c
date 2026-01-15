@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { BarChart3, Loader2, AlertCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/api/client";
 
 interface MarketBar {
   symbol: string;
@@ -23,14 +23,8 @@ const MarketDataWidget = () => {
   useEffect(() => {
     const fetchBars = async () => {
       try {
-        const { data, error: fetchError } = await supabase
-          .from("market_data_1m")
-          .select("symbol, ts, open, high, low, close, volume")
-          .order("ts", { ascending: false })
-          .limit(200);
-
-        if (fetchError) throw fetchError;
-        setBars(data || []);
+        const data = await apiClient.getMarketData1mLatest({ limit: 200 });
+        setBars(data as MarketBar[]);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to fetch market data");

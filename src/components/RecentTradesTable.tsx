@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/api/client";
 import { format } from "date-fns";
 import {
   Table,
@@ -29,45 +29,32 @@ export function RecentTradesTable() {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    // Fetch initial trades
-    const fetchTrades = async () => {
-      const { data, error } = await supabase
-        .from("trades")
-        .select("id, created_at, root_symbol, side, strike, option_type, expiry, price, delta")
-        .order("created_at", { ascending: false })
-        .limit(50);
+    let isMounted = true;
+    let intervalId: number | null = null;
 
-      if (error) {
-        console.error("Error fetching trades:", error);
-      } else {
+    const fetchTrades = async () => {
+      try {
+        const data = (await apiClient.getTradesRecent(50)) as Trade[];
+        if (!isMounted) return;
         setTrades(data || []);
+        setIsConnected(true);
+      } catch (err) {
+        console.error("Error fetching trades:", err);
+        if (!isMounted) return;
+        setIsConnected(false);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchTrades();
 
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel("trades-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "trades",
-        },
-        (payload) => {
-          const newTrade = payload.new as Trade;
-          setTrades((prev) => [newTrade, ...prev].slice(0, 50));
-        }
-      )
-      .subscribe((status) => {
-        setIsConnected(status === "SUBSCRIBED");
-      });
+    // TODO(realtime): Replace polling with backend WS topic trades:insert.
+    intervalId = window.setInterval(fetchTrades, 5000);
 
     return () => {
-      supabase.removeChannel(channel);
+      isMounted = false;
+      if (intervalId) window.clearInterval(intervalId);
     };
   }, []);
 
@@ -115,7 +102,7 @@ export function RecentTradesTable() {
               }`}
             />
             <span className="text-xs text-slate-500">
-              {isConnected ? "Live" : "Connecting..."}
+              {isConnected ? "Live" : "Offline"}
             </span>
           </div>
         </div>

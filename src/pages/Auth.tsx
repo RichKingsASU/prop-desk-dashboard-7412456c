@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,11 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Mail, Lock, AlertCircle } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/auth/useAuth";
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, signIn, signUp, googleSignIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -46,19 +45,11 @@ export default function Auth() {
     
     setLoading(true);
     
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      if (error.message.includes("Invalid login credentials")) {
-        setError("Invalid email or password. Please try again.");
-      } else {
-        setError(error.message);
-      }
-    } else {
+    try {
+      await signIn(email, password);
       navigate("/");
+    } catch (err: any) {
+      setError(err?.message || "Failed to sign in. Please try again.");
     }
     
     setLoading(false);
@@ -72,25 +63,13 @@ export default function Auth() {
     if (!validateInputs()) return;
     
     setLoading(true);
-    
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-      },
-    });
 
-    if (error) {
-      if (error.message.includes("already registered")) {
-        setError("This email is already registered. Try signing in instead.");
-      } else {
-        setError(error.message);
-      }
-    } else {
-      setMessage("Check your email for a confirmation link to complete your registration.");
+    try {
+      await signUp(email, password);
+      setMessage("Account created. You are now signed in.");
+      navigate("/");
+    } catch (err: any) {
+      setError(err?.message || "Failed to create account. Please try again.");
     }
     
     setLoading(false);
@@ -100,15 +79,12 @@ export default function Auth() {
     setError(null);
     setLoading(true);
     
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/`,
-      },
-    });
-
-    if (error) {
-      setError(error.message);
+    try {
+      await googleSignIn();
+      navigate("/");
+    } catch (err: any) {
+      setError(err?.message || "Failed to sign in with Google.");
+    } finally {
       setLoading(false);
     }
   };

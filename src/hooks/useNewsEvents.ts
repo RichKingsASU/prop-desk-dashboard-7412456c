@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/api/client';
 
 export interface NewsEvent {
   id: string;
@@ -37,24 +37,11 @@ export function useNewsEvents(initialFilters?: Partial<NewsFilters>) {
     setError(null);
 
     try {
-      let query = supabase
-        .from('news_events')
-        .select('id, source, headline, body, url, symbol, category, sentiment, importance, event_ts, received_at')
-        .order('received_at', { ascending: false })
-        .limit(filters.limit);
-
-      if (filters.source) {
-        query = query.eq('source', filters.source);
-      }
-
-      if (filters.symbol) {
-        query = query.eq('symbol', filters.symbol);
-      }
-
-      const { data, error: queryError } = await query;
-
-      if (queryError) throw queryError;
-
+      const data = await apiClient.getNewsEvents({
+        limit: filters.limit,
+        source: filters.source,
+        symbol: filters.symbol,
+      });
       setEvents((data || []) as NewsEvent[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch news events');
