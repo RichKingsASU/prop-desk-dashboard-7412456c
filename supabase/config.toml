@@ -2,3 +2,9 @@ project_id = "nugswladoficdyvygstg"
 
 [functions.persist-dev-logs]
 verify_jwt = false
+
+[functions.config-firebase]
+verify_jwt = false
+
+[functions.config-supabase]
+verify_jwt = false
