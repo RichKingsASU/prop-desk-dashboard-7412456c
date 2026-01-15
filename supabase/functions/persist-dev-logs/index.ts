@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getRequiredSecret } from "../_shared/gcpSecretManager.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +15,12 @@ interface DevLog {
   meta?: Record<string, unknown>;
 }
 
+// Fail fast on cold start if secrets are missing.
+const expectedToken = await getRequiredSecret('OPS_LOG_INGEST_TOKEN');
+const supabaseUrl = await getRequiredSecret('SUPABASE_URL');
+const supabaseServiceKey = await getRequiredSecret('SUPABASE_SERVICE_ROLE_KEY');
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -23,15 +30,6 @@ serve(async (req) => {
   try {
     // Validate X-OPS-TOKEN header
     const opsToken = req.headers.get('x-ops-token');
-    const expectedToken = Deno.env.get('OPS_LOG_INGEST_TOKEN');
-    
-    if (!expectedToken) {
-      console.error('OPS_LOG_INGEST_TOKEN secret is not configured');
-      return new Response(
-        JSON.stringify({ error: 'Server misconfiguration' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     if (!opsToken || opsToken !== expectedToken) {
       console.warn('Invalid or missing X-OPS-TOKEN header');
@@ -66,12 +64,6 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Create Supabase client with service role key (bypasses RLS)
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Prepare logs for insertion
     const logsToInsert = validLogs.map(log => ({

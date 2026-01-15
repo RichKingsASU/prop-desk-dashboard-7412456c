@@ -2,13 +2,25 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+type SupabaseRuntimeConfig = {
+  VITE_SUPABASE_URL: string;
+  VITE_SUPABASE_PUBLISHABLE_KEY: string;
+};
+
+declare global {
+  interface Window {
+    __RUNTIME_CONFIG__?: Partial<SupabaseRuntimeConfig>;
+  }
+}
+
+const runtimeConfig = window.__RUNTIME_CONFIG__;
+if (!runtimeConfig?.VITE_SUPABASE_URL) throw new Error('Missing Supabase config: VITE_SUPABASE_URL');
+if (!runtimeConfig?.VITE_SUPABASE_PUBLISHABLE_KEY) throw new Error('Missing Supabase config: VITE_SUPABASE_PUBLISHABLE_KEY');
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = createClient<Database>(runtimeConfig.VITE_SUPABASE_URL, runtimeConfig.VITE_SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,
     persistSession: true,

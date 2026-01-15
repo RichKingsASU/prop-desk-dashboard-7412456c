@@ -1,12 +1,15 @@
 # Supabase UI Setup Guide
 
-## Environment Variables
+## Runtime Configuration (No `.env`)
 
-The Lovable project is already configured with:
-- `VITE_SUPABASE_URL` - Supabase project URL
-- `VITE_SUPABASE_PUBLISHABLE_KEY` - Supabase anon/public key
+This project does **not** read configuration from `.env`, `import.meta.env`, or `process.env`.
 
-These are set automatically when connecting a Supabase project via Lovable.
+The UI fetches Supabase connection values from a backend endpoint:
+- `GET /config/supabase` returns:
+  - `VITE_SUPABASE_URL`
+  - `VITE_SUPABASE_PUBLISHABLE_KEY`
+
+Those values should be sourced from **Google Secret Manager** by your backend (fail fast if missing).
 
 ## Required Tables
 
@@ -84,7 +87,7 @@ USING (true);
 ## Troubleshooting
 
 ### Widgets show "Error" messages
-1. Check that environment variables are set correctly in Lovable
+1. Check that `GET /config/supabase` returns valid JSON
 2. Verify RLS policies allow SELECT for the anon role
 3. Check browser console for specific error messages
 
@@ -102,3 +105,15 @@ Navigate to `/test/supabase-dashboard` and check the status banner. It should sh
 |-------|-------------|
 | `/test` | Test Hub - index of experiments |
 | `/test/supabase-dashboard` | Live Supabase data dashboard |
+
+## Firebase Configuration
+
+The UI must obtain Firebase config via a backend endpoint (or CI injection).
+
+- `GET /config/firebase` returns:
+  - `FIREBASE_API_KEY`
+  - `FIREBASE_AUTH_DOMAIN`
+  - `FIREBASE_PROJECT_ID`
+  - `FIREBASE_APP_ID`
+
+These values should be read from **Google Secret Manager** and must not be remapped or swapped.
