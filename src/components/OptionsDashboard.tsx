@@ -1,7 +1,6 @@
 import { RefreshCw } from "lucide-react";
 import { RecentTradesTable } from "@/components/RecentTradesTable";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -109,12 +108,7 @@ export default function OptionsDashboard() {
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["portfolio-performance"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("portfolio_performance")
-        .select("*");
-
-      if (error) throw error;
-      return data as PortfolioPerformance[];
+      return [] as PortfolioPerformance[];
     },
   });
 
@@ -151,7 +145,7 @@ export default function OptionsDashboard() {
             ))
           ) : (
             <div className="col-span-full text-center py-12">
-              <p className="text-muted-foreground">No portfolio data available</p>
+              <p className="text-muted-foreground">No portfolio data available (backend not configured)</p>
             </div>
           )}
         </div>

@@ -17,7 +17,6 @@ import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import TestHub from "./pages/test/TestHub";
-import SupabaseDashboard from "./pages/test/SupabaseDashboard";
 import OpsLayout from "./pages/ops/OpsLayout";
 import OpsOverview from "./pages/ops/OpsOverview";
 import OptionsExplorer from "./pages/ops/OptionsExplorer";
@@ -54,7 +53,6 @@ const App = () => (
                     <Route path="jobs" element={<JobHealth />} />
                   </Route>
                   <Route path="/test" element={<TestHub />} />
-                  <Route path="/test/supabase-dashboard" element={<SupabaseDashboard />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

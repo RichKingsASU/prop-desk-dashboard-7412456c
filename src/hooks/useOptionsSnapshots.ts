@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 
 export interface OptionSnapshot {
   option_symbol: string;
@@ -54,42 +53,9 @@ export function useOptionsSnapshots(initialFilters?: Partial<SnapshotFilters>) {
     setError(null);
 
     try {
-      const now = new Date();
-      const timeWindowStart = new Date(now.getTime() - filters.timeWindowMinutes * 60 * 1000);
-
-      let query = supabase
-        .from('alpaca_option_snapshots')
-        .select('*', { count: 'exact' })
-        .eq('underlying_symbol', filters.symbol)
-        .gte('snapshot_time', timeWindowStart.toISOString())
-        .order('snapshot_time', { ascending: false })
-        .limit(500);
-
-      const { data, error: queryError, count } = await query;
-
-      if (queryError) throw queryError;
-
-      // Client-side filtering for JSONB fields
-      let filtered = (data || []) as OptionSnapshot[];
-
-      if (filters.optionType !== 'all') {
-        filtered = filtered.filter(s => s.payload?.option_type === filters.optionType);
-      }
-
-      if (filters.strikeMin !== null) {
-        filtered = filtered.filter(s => (s.payload?.strike || 0) >= filters.strikeMin!);
-      }
-
-      if (filters.strikeMax !== null) {
-        filtered = filtered.filter(s => (s.payload?.strike || 0) <= filters.strikeMax!);
-      }
-
-      if (filters.expiration) {
-        filtered = filtered.filter(s => s.payload?.expiration === filters.expiration);
-      }
-
-      setSnapshots(filtered);
-      setTotalCount(count || 0);
+      void filters;
+      setSnapshots([]);
+      setTotalCount(0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch snapshots');
       setSnapshots([]);

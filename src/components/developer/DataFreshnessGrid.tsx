@@ -3,7 +3,7 @@ import { useExchanges } from '@/contexts/ExchangeContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Clock, Database } from 'lucide-react';
+import { RefreshCw, Clock } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 interface FreshnessItem {
@@ -12,7 +12,6 @@ interface FreshnessItem {
   lastUpdate: Date | null;
   refreshRate: string;
   isRealtime: boolean;
-  isSupabase: boolean;
 }
 
 const getFreshnessStatus = (lastUpdate: Date | null, isRealtime: boolean) => {
@@ -24,7 +23,6 @@ const getFreshnessStatus = (lastUpdate: Date | null, isRealtime: boolean) => {
   const ageHours = ageMin / 60;
   const ageDays = ageHours / 24;
 
-  // For Supabase data, use longer thresholds since it's not real-time streaming
   if (!isRealtime) {
     if (ageDays < 1) return { status: 'fresh', color: 'bg-emerald-500', label: 'Fresh' };
     if (ageDays < 7) return { status: 'ok', color: 'bg-emerald-400', label: 'Recent' };
@@ -63,14 +61,16 @@ export const DataFreshnessGrid = () => {
 
   const freshnessItems: FreshnessItem[] = streams.map(stream => ({
     name: stream.name,
-    source: stream.isSupabase ? 'Supabase' : (getExchangeById(stream.exchange)?.displayName || stream.exchange),
+    source: getExchangeById(stream.exchange)?.displayName || stream.exchange,
     lastUpdate: stream.lastMessage,
-    refreshRate: stream.isSupabase ? 'Real-time Push' : 
-                 stream.type === 'price' || stream.type === 'level2' ? 'Real-time' : 
-                 stream.type === 'account' ? '15s' : 
-                 stream.type === 'options' ? '5s' : 'Push',
-    isRealtime: !stream.isSupabase && (stream.type === 'price' || stream.type === 'level2'),
-    isSupabase: stream.isSupabase || false
+    refreshRate: stream.type === 'price' || stream.type === 'level2'
+      ? 'Real-time'
+      : stream.type === 'account'
+        ? '15s'
+        : stream.type === 'options'
+          ? '5s'
+          : 'Push',
+    isRealtime: stream.type === 'price' || stream.type === 'level2'
   }));
 
   return (
@@ -97,7 +97,6 @@ export const DataFreshnessGrid = () => {
             return (
               <div key={idx} className="grid grid-cols-5 gap-2 items-center py-2 border-b border-border/50 last:border-0">
                 <span className="font-medium text-sm flex items-center gap-1.5">
-                  {item.isSupabase && <Database className="h-3 w-3 text-muted-foreground" />}
                   {item.name}
                 </span>
                 <span className="text-sm text-muted-foreground">{item.source}</span>

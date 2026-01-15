@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLiveQuotes } from './useLiveQuotes';
-import { supabase } from '@/integrations/supabase/client';
 
 export interface WatchlistItem {
   symbol: string;
@@ -13,17 +12,6 @@ export interface WatchlistItem {
   isLive?: boolean;
 }
 
-// Mock data fallback
-const mockWatchlist: WatchlistItem[] = [
-  { symbol: "SPY", price: 432.15, change: 1.23, changePct: 0.29, volume: 85000000, status: "hot", sparklineData: [430, 431, 430.5, 432, 431.8, 432.15] },
-  { symbol: "QQQ", price: 368.50, change: -0.85, changePct: -0.23, volume: 45000000, status: "normal", sparklineData: [369, 368.8, 369.2, 368.5, 368.3, 368.5] },
-  { symbol: "AAPL", price: 178.23, change: 2.15, changePct: 1.22, volume: 52000000, status: "trending", sparklineData: [176, 177, 177.5, 178, 178.1, 178.23] },
-  { symbol: "TSLA", price: 245.67, change: -3.45, changePct: -1.38, volume: 95000000, status: "hot", sparklineData: [249, 247, 246, 245, 246, 245.67] },
-  { symbol: "NVDA", price: 495.30, change: 8.75, changePct: 1.80, volume: 78000000, status: "trending", sparklineData: [487, 490, 492, 494, 495, 495.3] },
-  { symbol: "AMD", price: 165.80, change: 1.90, changePct: 1.16, volume: 34000000, status: "normal", sparklineData: [164, 165, 164.5, 165.5, 165.7, 165.8] },
-  { symbol: "MSFT", price: 412.45, change: -1.20, changePct: -0.29, volume: 28000000, status: "normal", sparklineData: [413, 412.5, 413, 412.8, 412.3, 412.45] },
-];
-
 interface SparklineData {
   [symbol: string]: number[];
 }
@@ -33,55 +21,15 @@ export function useLiveWatchlist() {
   const [sparklines, setSparklines] = useState<SparklineData>({});
   const [sparklinesLoading, setSparklinesLoading] = useState(false);
 
-  // Fetch sparkline data from market_data_1m for symbols in quotes
   useEffect(() => {
-    const fetchSparklines = async () => {
-      if (quotes.length === 0) return;
-      
-      setSparklinesLoading(true);
-      try {
-        const symbols = quotes.map(q => q.symbol);
-        
-        // Fetch last 6 bars per symbol
-        const { data, error } = await supabase
-          .from('market_data_1m')
-          .select('symbol, close, ts')
-          .in('symbol', symbols)
-          .order('ts', { ascending: false })
-          .limit(symbols.length * 6);
-
-        if (error) throw error;
-
-        // Group by symbol and take last 6 closes
-        const grouped: SparklineData = {};
-        symbols.forEach(sym => {
-          const symbolBars = data
-            ?.filter(d => d.symbol === sym)
-            .slice(0, 6)
-            .reverse() || [];
-          grouped[sym] = symbolBars.map(b => b.close);
-        });
-
-        setSparklines(grouped);
-      } catch (err) {
-        console.error('Error fetching sparklines:', err);
-      } finally {
-        setSparklinesLoading(false);
-      }
-    };
-
-    fetchSparklines();
-    
-    // Refresh sparklines every 60 seconds
-    const interval = setInterval(fetchSparklines, 60000);
-    return () => clearInterval(interval);
+    setSparklines({});
+    setSparklinesLoading(false);
   }, [quotes]);
 
   // Build watchlist items from live quotes
   const watchlist = useMemo((): WatchlistItem[] => {
     if (quotes.length === 0) {
-      // Return mock data when no live quotes
-      return mockWatchlist;
+      return [];
     }
 
     return quotes.map(quote => {

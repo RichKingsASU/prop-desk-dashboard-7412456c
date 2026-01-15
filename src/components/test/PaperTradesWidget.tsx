@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Loader2, AlertCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { FileText } from "lucide-react";
 
 interface PaperTrade {
   created_at: string;
@@ -21,25 +20,9 @@ const PaperTradesWidget = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchTrades = async () => {
-      try {
-        const { data, error: fetchError } = await supabase
-          .from("paper_trades")
-          .select("created_at, symbol, side, qty, price, status, source")
-          .order("created_at", { ascending: false })
-          .limit(50);
-
-        if (fetchError) throw fetchError;
-        setTrades(data || []);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch trades");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTrades();
+    setTrades([]);
+    setError("No backend configured for paper trades.");
+    setLoading(false);
   }, []);
 
   const formatTime = (ts: string) => {
@@ -69,14 +52,10 @@ const PaperTradesWidget = () => {
       <CardContent>
         {loading ? (
           <div className="flex items-center justify-center py-8 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin mr-2" />
             Loading trades...
           </div>
         ) : error ? (
-          <div className="flex items-center justify-center py-8 text-destructive">
-            <AlertCircle className="h-5 w-5 mr-2" />
-            {error}
-          </div>
+          <div className="flex items-center justify-center py-8 text-muted-foreground">{error}</div>
         ) : trades.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             No paper trades yet.
