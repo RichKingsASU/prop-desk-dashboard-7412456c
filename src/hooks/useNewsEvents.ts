@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseClient, isSupabaseConfigured } from '@/integrations/supabase/client';
 
 export interface NewsEvent {
   id: string;
@@ -37,6 +37,11 @@ export function useNewsEvents(initialFilters?: Partial<NewsFilters>) {
     setError(null);
 
     try {
+      if (!isSupabaseConfigured()) {
+        throw new Error('Supabase is not configured.');
+      }
+
+      const supabase = getSupabaseClient();
       let query = supabase
         .from('news_events')
         .select('id, source, headline, body, url, symbol, category, sentiment, importance, event_ts, received_at')

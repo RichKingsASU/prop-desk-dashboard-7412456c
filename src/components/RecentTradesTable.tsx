@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseClient, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import {
   Table,
@@ -29,6 +29,14 @@ export function RecentTradesTable() {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
+    if (!isSupabaseConfigured()) {
+      setLoading(false);
+      setIsConnected(false);
+      return;
+    }
+
+    const supabase = getSupabaseClient();
+
     // Fetch initial trades
     const fetchTrades = async () => {
       const { data, error } = await supabase

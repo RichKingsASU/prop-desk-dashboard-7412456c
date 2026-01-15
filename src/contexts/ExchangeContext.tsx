@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseClient, isSupabaseConfigured } from '@/integrations/supabase/client';
 import { logEvent } from '@/lib/eventLogStore';
 
 export type ExchangeType = 'broker' | 'data-provider' | 'options-exchange';
@@ -106,6 +106,16 @@ export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Load broker accounts from Supabase
   useEffect(() => {
     const loadBrokerAccounts = async () => {
+      if (!isSupabaseConfigured()) {
+        setExchanges(
+          REFERENCE_PROVIDERS.map(p =>
+            p.id === 'supabase' ? { ...p, status: 'inactive' } : p
+          )
+        );
+        return;
+      }
+
+      const supabase = getSupabaseClient();
       try {
         const { data: brokerAccounts, error } = await supabase
           .from('broker_accounts')
@@ -154,6 +164,13 @@ export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     loadBrokerAccounts();
 
+    if (!isSupabaseConfigured()) {
+      setIsLoading(false);
+      return;
+    }
+
+    const supabase = getSupabaseClient();
+
     // Subscribe to broker_accounts changes
     const channel = supabase
       .channel('broker-accounts-changes')
@@ -173,6 +190,9 @@ export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Periodic health check for Supabase connection
   useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    const supabase = getSupabaseClient();
+
     const checkHealth = async () => {
       const start = Date.now();
       const { error } = await supabase.from('live_quotes').select('symbol').limit(1);
@@ -245,6 +265,14 @@ export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     
     // For Supabase, actually test the connection
     if (exchange?.id === 'supabase') {
+      if (!isSupabaseConfigured()) {
+        setExchanges(prev => prev.map(e => 
+          e.id === id ? { ...e, status: 'inactive', lastHealthCheck: new Date(), latencyMs: 0, errorRate: 1 } : e
+        ));
+        return false;
+      }
+
+      const supabase = getSupabaseClient();
       setExchanges(prev => prev.map(e => 
         e.id === id ? { ...e, status: 'inactive' } : e
       ));
@@ -267,6 +295,8 @@ export const ExchangeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // For database brokers, just verify the record exists
     if (exchange?.isFromDatabase && exchange.brokerAccountId) {
+      if (!isSupabaseConfigured()) return false;
+      const supabase = getSupabaseClient();
       const { data } = await supabase
         .from('broker_accounts')
         .select('id')

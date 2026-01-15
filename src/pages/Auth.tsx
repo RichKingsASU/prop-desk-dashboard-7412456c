@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseClient, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,22 +46,34 @@ export default function Auth() {
     
     setLoading(true);
     
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      if (error.message.includes("Invalid login credentials")) {
-        setError("Invalid email or password. Please try again.");
-      } else {
-        setError(error.message);
+    try {
+      if (!isSupabaseConfigured()) {
+        throw new Error(
+          "Authentication is unavailable because Supabase is not configured."
+        );
       }
-    } else {
-      navigate("/");
+
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        if (error.message.includes("Invalid login credentials")) {
+          setError("Invalid email or password. Please try again.");
+        } else {
+          setError(error.message);
+        }
+      } else {
+        navigate("/");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to sign in");
+    } finally {
+      setLoading(false);
     }
     
-    setLoading(false);
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -73,42 +85,67 @@ export default function Auth() {
     
     setLoading(true);
     
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-      },
-    });
-
-    if (error) {
-      if (error.message.includes("already registered")) {
-        setError("This email is already registered. Try signing in instead.");
-      } else {
-        setError(error.message);
+    try {
+      if (!isSupabaseConfigured()) {
+        throw new Error(
+          "Authentication is unavailable because Supabase is not configured."
+        );
       }
-    } else {
-      setMessage("Check your email for a confirmation link to complete your registration.");
+
+      const supabase = getSupabaseClient();
+      const redirectUrl = `${window.location.origin}/`;
+
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+        },
+      });
+
+      if (error) {
+        if (error.message.includes("already registered")) {
+          setError("This email is already registered. Try signing in instead.");
+        } else {
+          setError(error.message);
+        }
+      } else {
+        setMessage(
+          "Check your email for a confirmation link to complete your registration."
+        );
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to sign up");
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   const handleGoogleSignIn = async () => {
     setError(null);
     setLoading(true);
     
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/`,
-      },
-    });
+    try {
+      if (!isSupabaseConfigured()) {
+        throw new Error(
+          "Authentication is unavailable because Supabase is not configured."
+        );
+      }
 
-    if (error) {
-      setError(error.message);
+      const supabase = getSupabaseClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
+      });
+
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to sign in");
       setLoading(false);
     }
   };

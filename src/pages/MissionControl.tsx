@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { getSupabaseClient, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Rocket, Play, Square } from "lucide-react";
 import { toast } from "sonner";
@@ -108,7 +109,23 @@ export default function MissionControl() {
 
   // Poll system state + logs until WS exists.
   useEffect(() => {
-    let cancelled = false;
+    const fetchData = async () => {
+      if (!isSupabaseConfigured()) {
+        setIsLoading(false);
+        return;
+      }
+
+      const supabase = getSupabaseClient();
+      // Fetch system state
+      const { data: stateData } = await supabase
+        .from("system_state")
+        .select("*")
+        .limit(1)
+        .single();
+
+      if (stateData) {
+        setSystemState(stateData);
+      }
 
     const refresh = async () => {
       if (pollInFlightRef.current) return;
@@ -138,11 +155,36 @@ export default function MissionControl() {
         setLogs(nextLogs);
         lastLogTsRef.current = nextLogs.length ? nextLogs[nextLogs.length - 1].created_at : lastLogTsRef.current;
 
-        setIsLoading(false);
-      } finally {
-        pollInFlightRef.current = false;
-      }
-    };
+  // Subscribe to realtime updates
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    const supabase = getSupabaseClient();
+
+    const stateChannel = supabase
+      .channel("system-state-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "system_state" },
+        (payload) => {
+          setSystemState(payload.new as SystemState);
+        }
+      )
+      .subscribe();
+
+    const logsChannel = supabase
+      .channel("system-logs-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "system_logs" },
+        (payload) => {
+          setLogs((prev) => {
+            const newLogs = [...prev, payload.new as SystemLog];
+            // Keep only last 50
+            return newLogs.slice(-50);
+          });
+        }
+      )
+      .subscribe();
 
     refresh();
     const id = window.setInterval(refresh, pollIntervalMs);
@@ -162,7 +204,15 @@ export default function MissionControl() {
   const sendCommand = async (command: "START" | "STOP") => {
     setIsSendingCommand(true);
     try {
-      await client.postSystemCommand(command);
+      if (!isSupabaseConfigured()) {
+        throw new Error("Cannot send command: Supabase is not configured.");
+      }
+      const supabase = getSupabaseClient();
+      const { error } = await supabase
+        .from("system_commands")
+        .insert({ command, status: "PENDING" });
+
+      if (error) throw error;
       toast.success(`${command} command sent`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

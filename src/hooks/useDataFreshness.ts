@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseClient, isSupabaseConfigured } from '@/integrations/supabase/client';
 
 export interface TableFreshness {
   tableName: string;
@@ -44,6 +44,15 @@ export function useDataFreshness() {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
   const fetchFreshness = async () => {
+    if (!isSupabaseConfigured()) {
+      setTables(prev => prev.map(t => ({ ...t, loading: false, status: 'unknown' })));
+      setJobs([]);
+      setLoading(false);
+      setLastRefresh(new Date());
+      return;
+    }
+
+    const supabase = getSupabaseClient();
     const now = new Date();
     const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseClient, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,6 +70,11 @@ export default function Settings() {
     setError(null);
 
     try {
+      if (!isSupabaseConfigured()) {
+        throw new Error("Cannot upload avatar: Supabase is not configured.");
+      }
+
+      const supabase = getSupabaseClient();
       const fileExt = file.name.split(".").pop();
       const filePath = `${user.id}/avatar.${fileExt}`;
 
@@ -110,6 +115,11 @@ export default function Settings() {
     setSuccess(false);
 
     try {
+      if (!isSupabaseConfigured()) {
+        throw new Error("Cannot save settings: Supabase is not configured.");
+      }
+
+      const supabase = getSupabaseClient();
       const { error: updateError } = await supabase
         .from("profiles")
         .update({

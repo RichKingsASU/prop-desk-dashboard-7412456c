@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseClient, isSupabaseConfigured } from "@/integrations/supabase/client";
 
 export type LiveQuote = {
   symbol: string;
@@ -23,6 +23,11 @@ export function useLiveQuotes() {
     async function loadInitial() {
       try {
         setLoading(true);
+        if (!isSupabaseConfigured()) {
+          throw new Error("Supabase is not configured.");
+        }
+
+        const supabase = getSupabaseClient();
         const { data, error } = await supabase
           .from("live_quotes")
           .select("*")
@@ -40,6 +45,14 @@ export function useLiveQuotes() {
     }
 
     loadInitial();
+
+    if (!isSupabaseConfigured()) {
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    const supabase = getSupabaseClient();
 
     // Subscribe to real-time updates
     const channel = supabase

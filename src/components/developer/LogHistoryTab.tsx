@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { History, Filter, RefreshCw, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseClient, isSupabaseConfigured } from '@/integrations/supabase/client';
 
 interface DevEventLog {
   id: string;
@@ -74,6 +74,14 @@ export const LogHistoryTab = () => {
     setIsLoading(true);
     
     try {
+      if (!isSupabaseConfigured()) {
+        setLogs([]);
+        setTotalCount(0);
+        setHasMore(false);
+        return;
+      }
+
+      const supabase = getSupabaseClient();
       let query = supabase
         .from('dev_event_logs')
         .select('*', { count: 'exact' })
