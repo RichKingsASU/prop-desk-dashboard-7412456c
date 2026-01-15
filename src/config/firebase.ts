@@ -11,6 +11,21 @@ export function getFirebaseRuntimeConfig(): Promise<FirebaseRuntimeConfig> {
   if (firebaseConfigPromise) return firebaseConfigPromise;
 
   firebaseConfigPromise = (async () => {
+    const injected = (window as unknown as { __RUNTIME_CONFIG__?: Partial<FirebaseRuntimeConfig> }).__RUNTIME_CONFIG__;
+    if (
+      injected?.FIREBASE_API_KEY &&
+      injected?.FIREBASE_AUTH_DOMAIN &&
+      injected?.FIREBASE_PROJECT_ID &&
+      injected?.FIREBASE_APP_ID
+    ) {
+      return {
+        FIREBASE_API_KEY: injected.FIREBASE_API_KEY,
+        FIREBASE_AUTH_DOMAIN: injected.FIREBASE_AUTH_DOMAIN,
+        FIREBASE_PROJECT_ID: injected.FIREBASE_PROJECT_ID,
+        FIREBASE_APP_ID: injected.FIREBASE_APP_ID,
+      };
+    }
+
     const res = await fetch("/config/firebase", {
       method: "GET",
       headers: { Accept: "application/json" },

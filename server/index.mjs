@@ -9,6 +9,7 @@ const [firebaseConfig, supabaseConfig] = await Promise.all([
 
 const server = http.createServer((req, res) => {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+  const asJs = url.searchParams.get("format") === "js";
 
   // Basic CORS for browser config fetches.
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -31,15 +32,29 @@ const server = http.createServer((req, res) => {
 
   if (url.pathname === "/config/firebase") {
     res.statusCode = 200;
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify(firebaseConfig));
+    if (asJs) {
+      res.setHeader("Content-Type", "application/javascript; charset=utf-8");
+      res.end(
+        `window.__RUNTIME_CONFIG__ = Object.assign(window.__RUNTIME_CONFIG__ || {}, ${JSON.stringify(firebaseConfig)});\n`
+      );
+    } else {
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(firebaseConfig));
+    }
     return;
   }
 
   if (url.pathname === "/config/supabase") {
     res.statusCode = 200;
-    res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify(supabaseConfig));
+    if (asJs) {
+      res.setHeader("Content-Type", "application/javascript; charset=utf-8");
+      res.end(
+        `window.__RUNTIME_CONFIG__ = Object.assign(window.__RUNTIME_CONFIG__ || {}, ${JSON.stringify(supabaseConfig)});\n`
+      );
+    } else {
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(supabaseConfig));
+    }
     return;
   }
 

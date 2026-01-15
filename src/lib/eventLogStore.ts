@@ -31,6 +31,13 @@ let supabaseUrlPromise: Promise<string> | null = null;
 
 const getSupabaseUrl = async (): Promise<string> => {
   if (supabaseUrlCache) return supabaseUrlCache;
+
+  const injected = (window as unknown as { __RUNTIME_CONFIG__?: Partial<SupabaseRuntimeConfig> }).__RUNTIME_CONFIG__;
+  if (injected?.VITE_SUPABASE_URL) {
+    supabaseUrlCache = injected.VITE_SUPABASE_URL;
+    return supabaseUrlCache;
+  }
+
   if (supabaseUrlPromise) return supabaseUrlPromise;
 
   supabaseUrlPromise = (async () => {

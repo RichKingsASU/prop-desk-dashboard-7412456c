@@ -27,13 +27,21 @@ serve(async (req) => {
     });
   }
 
-  return new Response(JSON.stringify(supabaseConfig), {
-    status: 200,
-    headers: {
-      ...corsHeaders,
-      "Content-Type": "application/json",
-      "Cache-Control": "no-store",
-    },
-  });
+  const url = new URL(req.url);
+  const asJs = url.searchParams.get("format") === "js";
+
+  return new Response(
+    asJs
+      ? `window.__RUNTIME_CONFIG__ = Object.assign(window.__RUNTIME_CONFIG__ || {}, ${JSON.stringify(supabaseConfig)});\n`
+      : JSON.stringify(supabaseConfig),
+    {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": asJs ? "application/javascript; charset=utf-8" : "application/json",
+        "Cache-Control": "no-store",
+      },
+    }
+  );
 });
 

@@ -22,6 +22,9 @@
 
   <body>
     <div id="root"></div>
+    <!-- Runtime config is injected by backend (no .env / import.meta.env). -->
+    <script src="/config/supabase?format=js"></script>
+    <script src="/config/firebase?format=js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
