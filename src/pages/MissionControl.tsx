@@ -3,9 +3,9 @@ import { getSupabaseClient, isSupabaseConfigured } from "@/integrations/supabase
 import { Button } from "@/components/ui/button";
 import { Rocket, Play, Square } from "lucide-react";
 import { toast } from "sonner";
+import { client } from "@/integrations/backend/client";
 
 interface SystemState {
-  id: number;
   is_running: boolean | null;
   active_symbol: string | null;
   last_heartbeat: string | null;
@@ -13,9 +13,86 @@ interface SystemState {
 
 interface SystemLog {
   id: string;
-  message: string | null;
+  message: string;
   source: string | null;
   created_at: string;
+}
+
+function coerceSystemState(raw: unknown): SystemState | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+
+  const isRunning =
+    typeof r.is_running === "boolean"
+      ? r.is_running
+      : typeof r.running === "boolean"
+      ? r.running
+      : typeof r.status === "string"
+      ? ["running", "online", "ok", "healthy"].includes(r.status.toLowerCase())
+      : null;
+
+  const activeSymbol =
+    typeof r.active_symbol === "string"
+      ? r.active_symbol
+      : typeof r.symbol === "string"
+      ? r.symbol
+      : null;
+
+  const lastHeartbeat =
+    typeof r.last_heartbeat === "string"
+      ? r.last_heartbeat
+      : typeof r.heartbeat === "string"
+      ? r.heartbeat
+      : typeof r.updated_at === "string"
+      ? r.updated_at
+      : null;
+
+  return { is_running: isRunning, active_symbol: activeSymbol, last_heartbeat: lastHeartbeat };
+}
+
+function coerceLogs(raw: unknown): SystemLog[] {
+  const arr = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === "object" && Array.isArray((raw as any).logs)
+    ? (raw as any).logs
+    : raw && typeof raw === "object" && Array.isArray((raw as any).data)
+    ? (raw as any).data
+    : [];
+
+  const logs: SystemLog[] = arr
+    .map((item: any, idx: number) => {
+      const createdAtRaw =
+        item?.created_at ?? item?.timestamp ?? item?.ts ?? item?.time ?? item?.date ?? null;
+      const createdAt =
+        typeof createdAtRaw === "string"
+          ? createdAtRaw
+          : typeof createdAtRaw === "number"
+          ? new Date(createdAtRaw).toISOString()
+          : createdAtRaw instanceof Date
+          ? createdAtRaw.toISOString()
+          : new Date().toISOString();
+
+      const messageRaw = item?.message ?? item?.msg ?? item?.text ?? item?.line ?? item?.event ?? null;
+      const message =
+        typeof messageRaw === "string"
+          ? messageRaw
+          : messageRaw == null
+          ? ""
+          : JSON.stringify(messageRaw);
+
+      const sourceRaw = item?.source ?? item?.service ?? item?.logger ?? item?.category ?? null;
+      const source = typeof sourceRaw === "string" ? sourceRaw : null;
+
+      const idRaw = item?.id ?? item?._id ?? item?.uuid ?? null;
+      const id = typeof idRaw === "string" ? idRaw : `${createdAt}-${idx}`;
+
+      return { id, message, source, created_at: createdAt };
+    })
+    .filter((l) => l.message.length > 0);
+
+  // Normalize to ascending time for terminal UX.
+  const sorted = [...logs].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  return sorted.slice(-50);
 }
 
 export default function MissionControl() {
@@ -23,9 +100,14 @@ export default function MissionControl() {
   const [logs, setLogs] = useState<SystemLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingCommand, setIsSendingCommand] = useState(false);
+  const [isCommandSupported, setIsCommandSupported] = useState(true);
   const terminalRef = useRef<HTMLDivElement>(null);
+  const pollInFlightRef = useRef(false);
+  const lastLogTsRef = useRef<string | null>(null);
 
-  // Fetch initial data
+  const pollIntervalMs = useMemo(() => 7000, []);
+
+  // Poll system state + logs until WS exists.
   useEffect(() => {
     const fetchData = async () => {
       if (!isSupabaseConfigured()) {
@@ -45,22 +127,33 @@ export default function MissionControl() {
         setSystemState(stateData);
       }
 
-      // Fetch last 50 logs
-      const { data: logsData } = await supabase
-        .from("system_logs")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(50);
+    const refresh = async () => {
+      if (pollInFlightRef.current) return;
+      pollInFlightRef.current = true;
+      try {
+        const [statusRaw, logsRaw] = await Promise.all([
+          client.getSystemStatus().catch((e) => {
+            console.warn("[MissionControl] Failed to fetch system status:", e);
+            return null;
+          }),
+          // Prefer system logs; fall back to dev logs if system logs endpoint doesn't exist.
+          client
+            .getSystemLogs({ limit: 50, since: lastLogTsRef.current ?? undefined })
+            .catch(async () => await client.getDevLogs({ limit: 50, since: lastLogTsRef.current ?? undefined }))
+            .catch((e) => {
+              console.warn("[MissionControl] Failed to fetch logs:", e);
+              return [];
+            }),
+        ]);
 
-      if (logsData) {
-        setLogs(logsData.reverse());
-      }
+        if (cancelled) return;
 
-      setIsLoading(false);
-    };
+        const nextState = coerceSystemState(statusRaw);
+        if (nextState) setSystemState(nextState);
 
-    fetchData();
-  }, []);
+        const nextLogs = coerceLogs(logsRaw);
+        setLogs(nextLogs);
+        lastLogTsRef.current = nextLogs.length ? nextLogs[nextLogs.length - 1].created_at : lastLogTsRef.current;
 
   // Subscribe to realtime updates
   useEffect(() => {
@@ -93,11 +186,13 @@ export default function MissionControl() {
       )
       .subscribe();
 
+    refresh();
+    const id = window.setInterval(refresh, pollIntervalMs);
     return () => {
-      supabase.removeChannel(stateChannel);
-      supabase.removeChannel(logsChannel);
+      cancelled = true;
+      window.clearInterval(id);
     };
-  }, []);
+  }, [pollIntervalMs]);
 
   // Auto-scroll terminal
   useEffect(() => {
@@ -120,7 +215,14 @@ export default function MissionControl() {
       if (error) throw error;
       toast.success(`${command} command sent`);
     } catch (err) {
-      toast.error(`Failed to send ${command} command`);
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.toLowerCase().includes("not found") || msg.includes("404")) {
+        // TODO: If backend does not support POST /system/commands, wire this to the correct endpoint once available.
+        setIsCommandSupported(false);
+        toast.error("Commands endpoint not supported by backend");
+      } else {
+        toast.error(`Failed to send ${command} command`);
+      }
       console.error(err);
     } finally {
       setIsSendingCommand(false);
@@ -190,7 +292,7 @@ export default function MissionControl() {
       <div className="flex gap-4 mb-8">
         <Button
           onClick={() => sendCommand("START")}
-          disabled={isSendingCommand || isOnline}
+          disabled={isSendingCommand || isOnline || !isCommandSupported}
           className="
             h-14 px-8 text-lg font-bold
             bg-green-600 hover:bg-green-500 text-black
@@ -207,7 +309,7 @@ export default function MissionControl() {
 
         <Button
           onClick={() => sendCommand("STOP")}
-          disabled={isSendingCommand || !isOnline}
+          disabled={isSendingCommand || !isOnline || !isCommandSupported}
           className="
             h-14 px-8 text-lg font-bold
             bg-red-600 hover:bg-red-500 text-white
@@ -262,7 +364,7 @@ export default function MissionControl() {
       <div className="text-xs text-green-700 border-t border-green-900 pt-4">
         <span>AgentTrader v1.0</span>
         <span className="mx-2">|</span>
-        <span>Connected to Supabase Realtime</span>
+        <span>Connected to backend (polling)</span>
       </div>
     </div>
   );
