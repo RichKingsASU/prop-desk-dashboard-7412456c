@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { History, Filter, RefreshCw, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/api/client';
 
 interface DevEventLog {
   id: string;
@@ -23,7 +23,7 @@ interface DevEventLog {
 
 type TimeRange = '15m' | '1h' | '24h' | 'all';
 type LogLevel = 'INFO' | 'WARN' | 'ERROR' | 'DEBUG' | 'all';
-type LogSource = 'supabase' | 'alpaca' | 'exchange' | 'system' | 'ui' | 'all';
+type LogSource = 'backend' | 'alpaca' | 'exchange' | 'system' | 'ui' | 'all';
 
 const levelColors: Record<string, string> = {
   INFO: 'bg-blue-500/10 text-blue-600',
@@ -33,7 +33,7 @@ const levelColors: Record<string, string> = {
 };
 
 const sourceColors: Record<string, string> = {
-  supabase: 'text-emerald-600',
+  backend: 'text-emerald-600',
   alpaca: 'text-amber-600',
   exchange: 'text-blue-600',
   system: 'text-purple-600',
@@ -74,50 +74,31 @@ export const LogHistoryTab = () => {
     setIsLoading(true);
     
     try {
-      let query = supabase
-        .from('dev_event_logs')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false });
-      
-      // Apply filters
+      const desired = append ? logs.length + PAGE_SIZE : PAGE_SIZE;
+      const data = (await apiClient.getSystemLogs(Math.max(desired, PAGE_SIZE))) as DevEventLog[];
+
+      const sorted = (data || []).slice().sort((a, b) => {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+
       const timeFilter = getTimeFilter();
-      if (timeFilter) {
-        query = query.gte('created_at', timeFilter);
-      }
-      
-      if (levelFilter !== 'all') {
-        query = query.eq('level', levelFilter);
-      }
-      
-      if (sourceFilter !== 'all') {
-        query = query.eq('source', sourceFilter);
-      }
-      
-      if (searchFilter) {
-        query = query.or(`message.ilike.%${searchFilter}%,event_type.ilike.%${searchFilter}%`);
-      }
-      
-      // Pagination
-      const offset = append ? logs.length : 0;
-      query = query.range(offset, offset + PAGE_SIZE - 1);
-      
-      const { data, error, count } = await query;
-      
-      if (error) {
-        console.error('Failed to fetch logs:', error);
-        return;
-      }
-      
-      const typedData = (data || []) as DevEventLog[];
-      
-      if (append) {
-        setLogs(prev => [...prev, ...typedData]);
-      } else {
-        setLogs(typedData);
-      }
-      
-      setTotalCount(count || 0);
-      setHasMore(typedData.length === PAGE_SIZE);
+      const filtered = sorted.filter((l) => {
+        if (timeFilter && new Date(l.created_at).toISOString() < timeFilter) return false;
+        if (levelFilter !== 'all' && String(l.level).toUpperCase() !== levelFilter) return false;
+        if (sourceFilter !== 'all' && String(l.source) !== sourceFilter) return false;
+        if (searchFilter) {
+          const q = searchFilter.toLowerCase();
+          const msg = (l.message || '').toLowerCase();
+          const ev = (l.event_type || '').toLowerCase();
+          if (!msg.includes(q) && !ev.includes(q)) return false;
+        }
+        return true;
+      });
+
+      const page = filtered.slice(0, desired);
+      setLogs(page);
+      setTotalCount(filtered.length);
+      setHasMore(filtered.length > page.length);
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {
@@ -240,7 +221,7 @@ export const LogHistoryTab = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Sources</SelectItem>
-              <SelectItem value="supabase">Supabase</SelectItem>
+              <SelectItem value="backend">Backend</SelectItem>
               <SelectItem value="alpaca">Alpaca</SelectItem>
               <SelectItem value="exchange">Exchange</SelectItem>
               <SelectItem value="system">System</SelectItem>

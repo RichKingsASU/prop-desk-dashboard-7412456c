@@ -116,7 +116,7 @@ export default function JobHealth() {
             <div>
               <p className="font-medium">Read-Only Monitoring</p>
               <p className="text-sm text-muted-foreground">
-                Job health is derived from data freshness in Supabase tables. No direct Cloud Run access required.
+                Job health is derived from backend-provided data freshness. No direct database access required.
                 A job is considered healthy if its data source has received new rows within the last 5 minutes.
               </p>
             </div>

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Loader2, AlertCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/api/client";
 
 interface PaperTrade {
   created_at: string;
@@ -23,14 +23,8 @@ const PaperTradesWidget = () => {
   useEffect(() => {
     const fetchTrades = async () => {
       try {
-        const { data, error: fetchError } = await supabase
-          .from("paper_trades")
-          .select("created_at, symbol, side, qty, price, status, source")
-          .order("created_at", { ascending: false })
-          .limit(50);
-
-        if (fetchError) throw fetchError;
-        setTrades(data || []);
+        const data = await apiClient.getPaperTrades(50);
+        setTrades(data as PaperTrade[]);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to fetch trades");
