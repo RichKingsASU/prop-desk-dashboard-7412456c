@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseClient, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Rocket, Play, Square } from "lucide-react";
 import { toast } from "sonner";
@@ -28,6 +28,12 @@ export default function MissionControl() {
   // Fetch initial data
   useEffect(() => {
     const fetchData = async () => {
+      if (!isSupabaseConfigured()) {
+        setIsLoading(false);
+        return;
+      }
+
+      const supabase = getSupabaseClient();
       // Fetch system state
       const { data: stateData } = await supabase
         .from("system_state")
@@ -58,6 +64,9 @@ export default function MissionControl() {
 
   // Subscribe to realtime updates
   useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    const supabase = getSupabaseClient();
+
     const stateChannel = supabase
       .channel("system-state-realtime")
       .on(
@@ -100,6 +109,10 @@ export default function MissionControl() {
   const sendCommand = async (command: "START" | "STOP") => {
     setIsSendingCommand(true);
     try {
+      if (!isSupabaseConfigured()) {
+        throw new Error("Cannot send command: Supabase is not configured.");
+      }
+      const supabase = getSupabaseClient();
       const { error } = await supabase
         .from("system_commands")
         .insert({ command, status: "PENDING" });

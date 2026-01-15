@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseClient, isSupabaseConfigured } from '@/integrations/supabase/client';
 
 export interface OptionSnapshot {
   option_symbol: string;
@@ -54,6 +54,11 @@ export function useOptionsSnapshots(initialFilters?: Partial<SnapshotFilters>) {
     setError(null);
 
     try {
+      if (!isSupabaseConfigured()) {
+        throw new Error('Supabase is not configured.');
+      }
+
+      const supabase = getSupabaseClient();
       const now = new Date();
       const timeWindowStart = new Date(now.getTime() - filters.timeWindowMinutes * 60 * 1000);
 

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseClient, isSupabaseConfigured } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { logEvent } from '@/lib/eventLogStore';
 
@@ -185,6 +185,18 @@ export const DataStreamProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       reconnectAttempts: 0
     }));
     setStreams(initialStreams);
+
+    if (!isSupabaseConfigured()) {
+      logEvent('warn', 'supabase', 'init', 'Supabase is not configured; realtime channels disabled');
+      setStreams(prev => prev.map(s => ({
+        ...s,
+        status: 'error',
+        lastError: 'Supabase is not configured'
+      })));
+      return;
+    }
+
+    const supabase = getSupabaseClient();
 
     // Fetch initial latest timestamps from each table
     const fetchInitialData = async () => {
@@ -437,6 +449,11 @@ export const DataStreamProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     // If it's a Supabase stream, resubscribe to the channel
     if (stream?.isSupabase) {
+      if (!isSupabaseConfigured()) {
+        updateStreamStatus(id, 'error', 'Supabase is not configured');
+        return;
+      }
+      const supabase = getSupabaseClient();
       const channel = channelsRef.current[id];
       if (channel) {
         supabase.removeChannel(channel);

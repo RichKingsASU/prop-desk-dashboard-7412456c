@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLiveQuotes } from './useLiveQuotes';
-import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseClient, isSupabaseConfigured } from '@/integrations/supabase/client';
 
 export interface WatchlistItem {
   symbol: string;
@@ -40,6 +40,8 @@ export function useLiveWatchlist() {
       
       setSparklinesLoading(true);
       try {
+        if (!isSupabaseConfigured()) return;
+        const supabase = getSupabaseClient();
         const symbols = quotes.map(q => q.symbol);
         
         // Fetch last 6 bars per symbol

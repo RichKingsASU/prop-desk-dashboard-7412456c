@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseClient, isSupabaseConfigured } from '@/integrations/supabase/client';
 
 interface LivePriceData {
   price: number;
@@ -28,6 +28,8 @@ export function useLivePrice(symbol: string): LivePriceData & { loading: boolean
   useEffect(() => {
     const fetchOpenPrice = async () => {
       try {
+        if (!isSupabaseConfigured()) return;
+        const supabase = getSupabaseClient();
         const { data, error } = await supabase
           .from('market_data_1m')
           .select('open, ts')
@@ -51,6 +53,8 @@ export function useLivePrice(symbol: string): LivePriceData & { loading: boolean
     const fetchInitialQuote = async () => {
       setLoading(true);
       try {
+        if (!isSupabaseConfigured()) return;
+        const supabase = getSupabaseClient();
         const { data, error } = await supabase
           .from('live_quotes')
           .select('*')
@@ -78,6 +82,9 @@ export function useLivePrice(symbol: string): LivePriceData & { loading: boolean
     };
 
     fetchInitialQuote();
+
+    if (!isSupabaseConfigured()) return;
+    const supabase = getSupabaseClient();
 
     // Real-time subscription
     const channel = supabase

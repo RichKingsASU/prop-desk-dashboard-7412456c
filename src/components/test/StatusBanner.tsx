@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Database, CheckCircle, XCircle, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseClient, isSupabaseConfigured } from "@/integrations/supabase/client";
 
 const StatusBanner = () => {
   const [status, setStatus] = useState<"checking" | "connected" | "error">("checking");
@@ -10,6 +10,12 @@ const StatusBanner = () => {
   useEffect(() => {
     const checkConnection = async () => {
       try {
+        if (!isSupabaseConfigured()) {
+          setStatus("error");
+          return;
+        }
+
+        const supabase = getSupabaseClient();
         const { error } = await supabase.from("paper_trades").select("id").limit(1);
         setStatus(error ? "error" : "connected");
       } catch {
