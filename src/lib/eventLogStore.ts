@@ -1,4 +1,5 @@
 import { useSyncExternalStore, useCallback } from 'react';
+import { getRuntimeConfig } from '@/config/runtime';
 
 export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 export type LogSource = 'supabase' | 'alpaca' | 'exchange' | 'system' | 'ui';
@@ -22,7 +23,6 @@ export interface PersistenceStatus {
 
 const MAX_LOGS = 500;
 const FLUSH_INTERVAL_MS = 1000;
-const SUPABASE_URL = 'https://nugswladoficdyvygstg.supabase.co';
 
 // In-memory store
 let logs: EventLog[] = [];
@@ -78,7 +78,8 @@ const flushLogs = async () => {
       meta: log.meta || {}
     }));
 
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/persist-dev-logs`, {
+    const { API_BASE_URL } = getRuntimeConfig();
+    const response = await fetch(`${API_BASE_URL}/functions/v1/persist-dev-logs`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

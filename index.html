@@ -18,6 +18,25 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@Lovable" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+    <!--
+      Optional JS-based runtime config injection.
+      Default behavior is to let the app fetch JSON from `/config/app`.
+      If you need JS injection instead, add:
+        <meta name="runtime-config" content="js" />
+      and serve `/config/app?format=js` that assigns `window.__RUNTIME_CONFIG__`.
+    -->
+    <script>
+      (function () {
+        var meta = document.querySelector('meta[name="runtime-config"]');
+        if (!meta || meta.getAttribute("content") !== "js") return;
+        if (window.__RUNTIME_CONFIG__) return;
+        var s = document.createElement("script");
+        s.src = "/config/app?format=js";
+        s.async = false;
+        document.head.appendChild(s);
+      })();
+    </script>
   </head>
 
   <body>
