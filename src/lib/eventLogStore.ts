@@ -22,7 +22,35 @@ export interface PersistenceStatus {
 
 const MAX_LOGS = 500;
 const FLUSH_INTERVAL_MS = 1000;
-const SUPABASE_URL = 'https://nugswladoficdyvygstg.supabase.co';
+type SupabaseRuntimeConfig = {
+  VITE_SUPABASE_URL: string;
+};
+
+let supabaseUrlCache: string | null = null;
+let supabaseUrlPromise: Promise<string> | null = null;
+
+const getSupabaseUrl = async (): Promise<string> => {
+  if (supabaseUrlCache) return supabaseUrlCache;
+  if (supabaseUrlPromise) return supabaseUrlPromise;
+
+  supabaseUrlPromise = (async () => {
+    const res = await fetch('/config/supabase', {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to load Supabase config: HTTP ${res.status}`);
+    }
+
+    const data = (await res.json()) as Partial<SupabaseRuntimeConfig>;
+    if (!data.VITE_SUPABASE_URL) throw new Error('Missing Supabase config: VITE_SUPABASE_URL');
+    supabaseUrlCache = data.VITE_SUPABASE_URL;
+    return supabaseUrlCache;
+  })();
+
+  return supabaseUrlPromise;
+};
 
 // In-memory store
 let logs: EventLog[] = [];
@@ -70,6 +98,7 @@ const flushLogs = async () => {
   notifyPersistenceListeners();
 
   try {
+    const supabaseUrl = await getSupabaseUrl();
     const payload = logsToFlush.map(log => ({
       source: log.source,
       level: log.level,
@@ -78,7 +107,7 @@ const flushLogs = async () => {
       meta: log.meta || {}
     }));
 
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/persist-dev-logs`, {
+    const response = await fetch(`${supabaseUrl}/functions/v1/persist-dev-logs`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

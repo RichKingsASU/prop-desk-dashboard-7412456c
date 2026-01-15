@@ -2,13 +2,37 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+type SupabaseRuntimeConfig = {
+  VITE_SUPABASE_URL: string;
+  VITE_SUPABASE_PUBLISHABLE_KEY: string;
+};
+
+async function loadSupabaseRuntimeConfig(): Promise<SupabaseRuntimeConfig> {
+  const res = await fetch('/config/supabase', {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to load Supabase config: HTTP ${res.status}`);
+  }
+
+  const data = (await res.json()) as Partial<SupabaseRuntimeConfig>;
+  if (!data.VITE_SUPABASE_URL) throw new Error('Missing Supabase config: VITE_SUPABASE_URL');
+  if (!data.VITE_SUPABASE_PUBLISHABLE_KEY) throw new Error('Missing Supabase config: VITE_SUPABASE_PUBLISHABLE_KEY');
+
+  return {
+    VITE_SUPABASE_URL: data.VITE_SUPABASE_URL,
+    VITE_SUPABASE_PUBLISHABLE_KEY: data.VITE_SUPABASE_PUBLISHABLE_KEY,
+  };
+}
+
+const { VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY } = await loadSupabaseRuntimeConfig();
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = createClient<Database>(VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,
     persistSession: true,
