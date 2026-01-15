@@ -4,7 +4,6 @@ import { ArrowLeft } from "lucide-react";
 import StatusBanner from "@/components/test/StatusBanner";
 import LiveQuotesWidget from "@/components/test/LiveQuotesWidget";
 import MarketDataWidget from "@/components/test/MarketDataWidget";
-import PaperTradesWidget from "@/components/test/PaperTradesWidget";
 
 const SupabaseDashboard = () => {
   return (
@@ -24,7 +23,6 @@ const SupabaseDashboard = () => {
         <div className="grid gap-6">
           <LiveQuotesWidget />
           <MarketDataWidget />
-          <PaperTradesWidget />
         </div>
       </div>
     </div>

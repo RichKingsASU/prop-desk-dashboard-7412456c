@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { BarChart3, Loader2, AlertCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { client } from "@/integrations/backend/client";
 
 interface MarketBar {
   symbol: string;
@@ -15,6 +15,49 @@ interface MarketBar {
   volume: number;
 }
 
+function coerceNumber(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v))) return Number(v);
+  return null;
+}
+
+function coerceString(v: unknown): string | null {
+  return typeof v === "string" && v.trim() ? v : null;
+}
+
+function toIso(v: unknown): string | null {
+  if (typeof v === "string" && v.trim()) return v;
+  if (typeof v === "number") return new Date(v).toISOString();
+  if (v instanceof Date) return v.toISOString();
+  return null;
+}
+
+function coerceBars1m(raw: unknown): MarketBar[] {
+  const arr = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === "object" && Array.isArray((raw as any).bars)
+    ? (raw as any).bars
+    : raw && typeof raw === "object" && Array.isArray((raw as any).data)
+    ? (raw as any).data
+    : [];
+
+  const bars: MarketBar[] = arr
+    .map((item: any) => {
+      const symbol = coerceString(item?.symbol ?? item?.S) ?? null;
+      const ts = toIso(item?.ts ?? item?.t ?? item?.time ?? item?.timestamp) ?? null;
+      const open = coerceNumber(item?.open ?? item?.o);
+      const high = coerceNumber(item?.high ?? item?.h);
+      const low = coerceNumber(item?.low ?? item?.l);
+      const close = coerceNumber(item?.close ?? item?.c);
+      const volume = coerceNumber(item?.volume ?? item?.v) ?? 0;
+      if (!symbol || !ts || open == null || high == null || low == null || close == null) return null;
+      return { symbol, ts, open, high, low, close, volume };
+    })
+    .filter(Boolean) as MarketBar[];
+
+  return bars.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
+}
+
 const MarketDataWidget = () => {
   const [bars, setBars] = useState<MarketBar[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,14 +66,8 @@ const MarketDataWidget = () => {
   useEffect(() => {
     const fetchBars = async () => {
       try {
-        const { data, error: fetchError } = await supabase
-          .from("market_data_1m")
-          .select("symbol, ts, open, high, low, close, volume")
-          .order("ts", { ascending: false })
-          .limit(200);
-
-        if (fetchError) throw fetchError;
-        setBars(data || []);
+        const raw = await client.getMarketBars1m({ limit: 200 });
+        setBars(coerceBars1m(raw).slice(0, 200));
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to fetch market data");
@@ -40,6 +77,8 @@ const MarketDataWidget = () => {
     };
 
     fetchBars();
+    const id = window.setInterval(fetchBars, 10_000);
+    return () => window.clearInterval(id);
   }, []);
 
   const formatPrice = (price: number) => `$${price.toFixed(2)}`;

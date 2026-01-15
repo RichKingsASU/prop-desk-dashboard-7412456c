@@ -18,7 +18,7 @@ const TestHub = () => {
 
         <h1 className="text-3xl font-bold text-foreground mb-2">Test Hub</h1>
         <p className="text-muted-foreground mb-8">
-          Development experiments and Supabase integration testing
+          Development experiments and backend market data verification
         </p>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -27,16 +27,15 @@ const TestHub = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Database className="h-5 w-5 text-primary" />
-                  Supabase Dashboard
+                  Market Data Dashboard
                 </CardTitle>
                 <CardDescription>
-                  Live data from market_data_1m, paper_trades, and live_quotes tables
+                  Live data via backend endpoints (quotes + 1m bars)
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex gap-2">
-                  <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">Real-time</span>
-                  <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded">Polling</span>
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">Polling</span>
                 </div>
               </CardContent>
             </Card>
