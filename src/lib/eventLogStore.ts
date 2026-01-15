@@ -17,7 +17,7 @@ const MAX_LOGS = 500;
 
 // In-memory store
 let logs: EventLog[] = [];
-let listeners: Set<() => void> = new Set();
+const listeners: Set<() => void> = new Set();
 
 const notifyListeners = () => {
   listeners.forEach(listener => listener());
