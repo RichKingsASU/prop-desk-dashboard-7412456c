@@ -54,7 +54,7 @@ const getSupabaseUrl = async (): Promise<string> => {
 
 // In-memory store
 let logs: EventLog[] = [];
-let listeners: Set<() => void> = new Set();
+const listeners: Set<() => void> = new Set();
 
 // Persistence state
 let isPersistenceEnabled = false;
@@ -69,7 +69,7 @@ let persistenceSnapshot: PersistenceStatus = {
   pendingCount: 0
 };
 let flushIntervalId: number | null = null;
-let persistenceListeners: Set<() => void> = new Set();
+const persistenceListeners: Set<() => void> = new Set();
 
 const notifyListeners = () => {
   listeners.forEach(listener => listener());
