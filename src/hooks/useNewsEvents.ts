@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect } from "react";
+import { apiFetch } from "@/services/apiClient";
 
 export interface NewsEvent {
   id: string;
@@ -26,7 +26,7 @@ export function useNewsEvents(initialFilters?: Partial<NewsFilters>) {
     source: null,
     symbol: null,
     limit: 100,
-    ...initialFilters
+    ...initialFilters,
   });
   const [events, setEvents] = useState<NewsEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,29 +35,14 @@ export function useNewsEvents(initialFilters?: Partial<NewsFilters>) {
   const fetchEvents = async () => {
     setLoading(true);
     setError(null);
-
     try {
-      let query = supabase
-        .from('news_events')
-        .select('id, source, headline, body, url, symbol, category, sentiment, importance, event_ts, received_at')
-        .order('received_at', { ascending: false })
-        .limit(filters.limit);
-
-      if (filters.source) {
-        query = query.eq('source', filters.source);
-      }
-
-      if (filters.symbol) {
-        query = query.eq('symbol', filters.symbol);
-      }
-
-      const { data, error: queryError } = await query;
-
-      if (queryError) throw queryError;
-
-      setEvents((data || []) as NewsEvent[]);
+      const params = new URLSearchParams();
+      if (filters.symbol) params.set("symbols", filters.symbol);
+      if (filters.limit) params.set("limit", String(filters.limit));
+      const resp = await apiFetch<{ news: NewsEvent[] }>(`/market/news?${params.toString()}`);
+      setEvents(Array.isArray(resp.news) ? resp.news : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch news events');
+      setError(err instanceof Error ? err.message : "Failed to fetch news events");
       setEvents([]);
     } finally {
       setLoading(false);
@@ -66,18 +51,12 @@ export function useNewsEvents(initialFilters?: Partial<NewsFilters>) {
 
   useEffect(() => {
     fetchEvents();
-  }, [filters]);
+  }, [filters.source, filters.symbol, filters.limit]);
 
   const updateFilters = (newFilters: Partial<NewsFilters>) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
+    setFilters((prev) => ({ ...prev, ...newFilters }));
   };
 
-  return {
-    events,
-    filters,
-    updateFilters,
-    loading,
-    error,
-    refresh: fetchEvents
-  };
+  return { events, filters, updateFilters, loading, error, refresh: fetchEvents };
 }
+

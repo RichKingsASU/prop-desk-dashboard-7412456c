@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Rocket, Play, Square } from "lucide-react";
 import { toast } from "sonner";
@@ -108,49 +108,11 @@ export default function MissionControl() {
 
   // Poll system state + logs until WS exists.
   useEffect(() => {
-    let cancelled = false;
-
-    const refresh = async () => {
-      if (pollInFlightRef.current) return;
-      pollInFlightRef.current = true;
-      try {
-        const [statusRaw, logsRaw] = await Promise.all([
-          client.getSystemStatus().catch((e) => {
-            console.warn("[MissionControl] Failed to fetch system status:", e);
-            return null;
-          }),
-          // Prefer system logs; fall back to dev logs if system logs endpoint doesn't exist.
-          client
-            .getSystemLogs({ limit: 50, since: lastLogTsRef.current ?? undefined })
-            .catch(async () => await client.getDevLogs({ limit: 50, since: lastLogTsRef.current ?? undefined }))
-            .catch((e) => {
-              console.warn("[MissionControl] Failed to fetch logs:", e);
-              return [];
-            }),
-        ]);
-
-        if (cancelled) return;
-
-        const nextState = coerceSystemState(statusRaw);
-        if (nextState) setSystemState(nextState);
-
-        const nextLogs = coerceLogs(logsRaw);
-        setLogs(nextLogs);
-        lastLogTsRef.current = nextLogs.length ? nextLogs[nextLogs.length - 1].created_at : lastLogTsRef.current;
-
-        setIsLoading(false);
-      } finally {
-        pollInFlightRef.current = false;
-      }
-    };
-
-    refresh();
-    const id = window.setInterval(refresh, pollIntervalMs);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, [pollIntervalMs]);
+    // TODO: wire to REST API once implemented.
+    setSystemState(null);
+    setLogs([]);
+    setIsLoading(false);
+  }, []);
 
   // Auto-scroll terminal
   useEffect(() => {
@@ -162,8 +124,7 @@ export default function MissionControl() {
   const sendCommand = async (command: "START" | "STOP") => {
     setIsSendingCommand(true);
     try {
-      await client.postSystemCommand(command);
-      toast.success(`${command} command sent`);
+      toast.error(`${command} command not available in this build yet`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.toLowerCase().includes("not found") || msg.includes("404")) {
@@ -314,7 +275,7 @@ export default function MissionControl() {
       <div className="text-xs text-green-700 border-t border-green-900 pt-4">
         <span>AgentTrader v1.0</span>
         <span className="mx-2">|</span>
-        <span>Connected to backend (polling)</span>
+        <span>Connected to API</span>
       </div>
     </div>
   );

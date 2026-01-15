@@ -20,7 +20,7 @@ const levelColors: Record<LogLevel, string> = {
 };
 
 const sourceColors: Record<LogSource, string> = {
-  supabase: 'text-emerald-600',
+  backend: 'text-emerald-600',
   alpaca: 'text-amber-600',
   exchange: 'text-blue-600',
   system: 'text-purple-600',
@@ -147,7 +147,7 @@ export const EventLogConsole = () => {
       setTokenInput('');
       toast({
         title: 'Log persistence enabled',
-        description: 'Logs will be saved to Supabase every second'
+        description: 'Logs will be saved to the API every second'
       });
     }
   };
@@ -259,7 +259,7 @@ export const EventLogConsole = () => {
             
             {/* Source Filter */}
             <div className="flex gap-1">
-              {(['all', 'supabase', 'alpaca', 'exchange', 'system', 'ui'] as const).map(source => (
+              {(['all', 'backend', 'alpaca', 'exchange', 'system', 'ui'] as const).map(source => (
                 <Button
                   key={source}
                   variant={sourceFilter === source ? "default" : "outline"}
@@ -307,7 +307,7 @@ export const EventLogConsole = () => {
               {filteredLogs.length === 0 ? (
                 <div className="text-muted-foreground text-center py-8">
                   {displayLogs.length === 0 
-                    ? 'No events logged yet. Events from Supabase channels, Alpaca WebSocket, and exchanges will appear here.'
+                    ? 'No events logged yet. Events from backend, Alpaca WebSocket, and exchanges will appear here.'
                     : 'No logs match the current filters'}
                 </div>
               ) : (
@@ -345,7 +345,7 @@ export const EventLogConsole = () => {
           <DialogHeader>
             <DialogTitle>Enable Log Persistence</DialogTitle>
             <DialogDescription>
-              Enter your OPS Log Ingest Token to persist logs to Supabase. This token is stored in your browser's localStorage and used for all future sessions.
+              Enter your log ingest token to persist logs to the API. This token is stored in your browser's localStorage and used for all future sessions.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">

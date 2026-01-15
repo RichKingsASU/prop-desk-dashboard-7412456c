@@ -4,7 +4,6 @@ import {
   Monitor, 
   Wrench, 
   FlaskConical, 
-  Database,
   Archive,
   Settings,
   User,
@@ -47,7 +46,6 @@ const developmentRoutes = [
   { title: "Developer", url: "/developer", icon: Wrench },
   { title: "Ops Dashboard", url: "/ops", icon: Activity },
   { title: "Test Hub", url: "/test", icon: FlaskConical },
-  { title: "Supabase", url: "/test/supabase-dashboard", icon: Database },
 ];
 
 const legacyRoutes = [

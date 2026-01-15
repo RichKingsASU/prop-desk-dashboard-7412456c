@@ -154,11 +154,12 @@ export function OptionChainSelector({
           Math.abs(Math.abs(opt.delta) - 0.50) < 0.05
         ) || null;
       
-      case 'atm':
-        const atmStrike = filteredOptions.reduce((prev, curr) => 
+      case 'atm': {
+        const atmStrike = filteredOptions.reduce((prev, curr) =>
           Math.abs(curr.strike - currentPrice) < Math.abs(prev.strike - currentPrice) ? curr : prev
         );
         return atmStrike;
+      }
       
       case 'high-volume':
         return filteredOptions.reduce((prev, curr) => 
