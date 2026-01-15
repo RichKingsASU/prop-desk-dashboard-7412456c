@@ -24,7 +24,7 @@ jobs:
             for path in "$@"; do
               if [ -d "$path" ]; then
                 if grep -RInF -- "$needle" "$path"; then
-                  echo "::error title=Unsafe env pattern detected::$needle found under $path. Do not access DATABASE_URL directly or import dotenv/python-dotenv."
+                  echo "::error title=Unsafe env pattern detected::$needle found under $path. Do not access DATABASE_URL_SECRET directly or import dotenv/python-dotenv."
                   exit 1
                 fi
               fi
@@ -38,7 +38,7 @@ jobs:
             for path in "$@"; do
               if [ -d "$path" ]; then
                 if grep -RInE -- "$pattern" "$path"; then
-                  echo "::error title=Unsafe env pattern detected::Regex '$pattern' matched under $path. Do not access DATABASE_URL directly or import dotenv/python-dotenv."
+                  echo "::error title=Unsafe env pattern detected::Regex '$pattern' matched under $path. Do not access DATABASE_URL_SECRET directly or import dotenv/python-dotenv."
                   exit 1
                 fi
               fi
@@ -47,9 +47,9 @@ jobs:
 
           SCAN_PATHS=(.github/workflows scripts backend)
 
-          # 1) Direct DATABASE_URL access (Python)
-          scan_fixed 'os.getenv("DATABASE_URL")' "${SCAN_PATHS[@]}"
-          scan_fixed 'os.environ["DATABASE_URL"]' "${SCAN_PATHS[@]}"
+          # 1) Direct DATABASE_URL_SECRET access (Python)
+          scan_fixed 'os.getenv("DATABASE_URL_SECRET")' "${SCAN_PATHS[@]}"
+          scan_fixed 'os.environ["DATABASE_URL_SECRET"]' "${SCAN_PATHS[@]}"
 
           # 2) dotenv / python-dotenv imports (Python + Node)
           scan_fixed 'from dotenv' "${SCAN_PATHS[@]}"
