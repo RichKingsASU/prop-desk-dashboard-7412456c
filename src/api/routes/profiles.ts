@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { requireFirebaseAuth } from "@/auth/middleware";
-import { sendError } from "@/api/errors";
-import { getProfileByUid, upsertProfile } from "@/db/repositories/profiles_repo";
+import { requireFirebaseAuth } from "../../auth/middleware.js";
+import { sendError } from "../errors.js";
+import { getProfileByUid, upsertProfile } from "../../db/repositories/profiles_repo.js";
 
 export function profilesRouter() {
   const router = Router();

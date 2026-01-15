@@ -1,4 +1,4 @@
-import { getSettings } from "@/config/settings";
+import { getSettings } from "../../config/settings.js";
 
 export type SystemStatus = {
   trading_enabled: boolean;

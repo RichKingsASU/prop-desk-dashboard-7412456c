@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getQuotes, listBars1m, listNews, listOptionsSnapshots } from "@/db/repositories/market_repo";
+import { getQuotes, listBars1m, listNews, listOptionsSnapshots } from "../../db/repositories/market_repo.js";
 
 function parseSymbols(value: string | undefined): string[] {
   if (!value) return [];

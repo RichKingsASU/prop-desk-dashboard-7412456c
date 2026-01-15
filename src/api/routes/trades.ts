@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { requireFirebaseAuth } from "@/auth/middleware";
-import { sendError } from "@/api/errors";
-import { listTradesByUid } from "@/db/repositories/trades_repo";
+import { requireFirebaseAuth } from "../../auth/middleware.js";
+import { sendError } from "../errors.js";
+import { listTradesByUid } from "../../db/repositories/trades_repo.js";
 
 export function tradesRouter() {
   const router = Router();

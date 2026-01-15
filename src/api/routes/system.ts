@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { requireFirebaseAuth } from "@/auth/middleware";
-import { sendError } from "@/api/errors";
-import { getSystemStatus } from "@/db/repositories/system_repo";
+import { requireFirebaseAuth } from "../../auth/middleware.js";
+import { sendError } from "../errors.js";
+import { getSystemStatus } from "../../db/repositories/system_repo.js";
 
 export function systemRouter() {
   const router = Router();

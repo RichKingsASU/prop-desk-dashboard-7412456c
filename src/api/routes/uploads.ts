@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
-import { requireFirebaseAuth } from "@/auth/middleware";
-import { sendError } from "@/api/errors";
+import { requireFirebaseAuth } from "../../auth/middleware.js";
+import { sendError } from "../errors.js";
 
 const upload = multer({ storage: multer.memoryStorage() });
 

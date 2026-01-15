@@ -1,5 +1,5 @@
 import { Pool } from "pg";
-import { getSettings } from "@/config/settings";
+import { getSettings } from "../config/settings.js";
 
 let pool: Pool | null = null;
 

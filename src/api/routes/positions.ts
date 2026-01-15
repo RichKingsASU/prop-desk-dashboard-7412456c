@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { requireFirebaseAuth } from "@/auth/middleware";
-import { sendError } from "@/api/errors";
-import { listPositionsByUid } from "@/db/repositories/trades_repo";
+import { requireFirebaseAuth } from "../../auth/middleware.js";
+import { sendError } from "../errors.js";
+import { listPositionsByUid } from "../../db/repositories/trades_repo.js";
 
 export function positionsRouter() {
   const router = Router();

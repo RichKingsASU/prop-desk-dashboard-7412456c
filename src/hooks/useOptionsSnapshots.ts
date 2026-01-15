@@ -71,7 +71,6 @@ export function useOptionsSnapshots(initialFilters?: Partial<SnapshotFilters>) {
 
   useEffect(() => {
     fetchSnapshots();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.symbol, filters.optionType, filters.strikeMin, filters.strikeMax, filters.expiration, filters.timeWindowMinutes]);
 
   const updateFilters = (newFilters: Partial<SnapshotFilters>) => {

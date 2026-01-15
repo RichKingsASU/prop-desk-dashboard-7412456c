@@ -1,5 +1,5 @@
 import admin from "firebase-admin";
-import { getSettings } from "@/config/settings";
+import { getSettings } from "../config/settings.js";
 
 let app: admin.app.App | null = null;
 

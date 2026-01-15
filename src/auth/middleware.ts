@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
-import { sendError } from "@/api/errors";
-import { getFirebaseAuth } from "@/auth/firebase_admin";
+import { sendError } from "../api/errors.js";
+import { getFirebaseAuth } from "./firebase_admin.js";
 
 function parseBearerToken(header: string | undefined): string | null {
   if (!header) return null;

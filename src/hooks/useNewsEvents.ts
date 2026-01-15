@@ -51,7 +51,6 @@ export function useNewsEvents(initialFilters?: Partial<NewsFilters>) {
 
   useEffect(() => {
     fetchEvents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.source, filters.symbol, filters.limit]);
 
   const updateFilters = (newFilters: Partial<NewsFilters>) => {

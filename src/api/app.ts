@@ -1,23 +1,24 @@
 import express from "express";
 import cors from "cors";
-import pinoHttp from "pino-http";
 import { randomUUID } from "node:crypto";
+import pino from "pino";
 
-import { getSettings } from "@/config/settings";
-import { sendError } from "@/api/errors";
-import { healthzRouter } from "@/api/routes/healthz";
-import { profilesRouter } from "@/api/routes/profiles";
-import { tradesRouter } from "@/api/routes/trades";
-import { positionsRouter } from "@/api/routes/positions";
-import { systemRouter } from "@/api/routes/system";
-import { marketRouter } from "@/api/routes/market";
-import { devLogsRouter } from "@/api/routes/dev_logs";
-import { uploadsRouter } from "@/api/routes/uploads";
+import { getSettings } from "../config/settings.js";
+import { sendError } from "./errors.js";
+import { healthzRouter } from "./routes/healthz.js";
+import { profilesRouter } from "./routes/profiles.js";
+import { tradesRouter } from "./routes/trades.js";
+import { positionsRouter } from "./routes/positions.js";
+import { systemRouter } from "./routes/system.js";
+import { marketRouter } from "./routes/market.js";
+import { devLogsRouter } from "./routes/dev_logs.js";
+import { uploadsRouter } from "./routes/uploads.js";
 
 // Fail fast on startup if required env vars are missing.
 const settings = getSettings();
 
 export const app = express();
+const logger = pino();
 
 app.disable("x-powered-by");
 
@@ -28,19 +29,20 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(
-  pinoHttp({
-    customProps: (req) => ({ request_id: req.requestId }),
-    serializers: {
-      req(req) {
-        return { method: req.method, url: req.url, request_id: (req as any).requestId };
-      },
-      res(res) {
-        return { statusCode: res.statusCode };
-      },
-    },
-  }),
-);
+app.use((req, res, next) => {
+  const start = process.hrtime.bigint();
+  res.on("finish", () => {
+    const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
+    logger.info({
+      request_id: req.requestId,
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      duration_ms: Math.round(durationMs),
+    });
+  });
+  next();
+});
 
 app.use(
   cors({
@@ -74,16 +76,14 @@ app.use((_req, res) => {
   return sendError(res, 404, "NOT_FOUND", "Route not found");
 });
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  req.log?.error({ err, request_id: req.requestId }, "Unhandled error");
+  logger.error({ err, request_id: req.requestId }, "Unhandled error");
   return sendError(res, 500, "INTERNAL", "Internal server error", { requestId: req.requestId });
 });
 
 app.listen(settings.port, () => {
   // Cloud Run structured logs: JSON line via pino.
   // Avoid logging secrets by only logging safe config.
-  // eslint-disable-next-line no-console
   console.log(
     JSON.stringify({
       severity: "INFO",
