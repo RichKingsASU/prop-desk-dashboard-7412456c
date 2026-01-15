@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Rocket, Play, Square } from "lucide-react";
 import { toast } from "sonner";
@@ -25,69 +24,11 @@ export default function MissionControl() {
   const [isSendingCommand, setIsSendingCommand] = useState(false);
   const terminalRef = useRef<HTMLDivElement>(null);
 
-  // Fetch initial data
   useEffect(() => {
-    const fetchData = async () => {
-      // Fetch system state
-      const { data: stateData } = await supabase
-        .from("system_state")
-        .select("*")
-        .limit(1)
-        .single();
-
-      if (stateData) {
-        setSystemState(stateData);
-      }
-
-      // Fetch last 50 logs
-      const { data: logsData } = await supabase
-        .from("system_logs")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      if (logsData) {
-        setLogs(logsData.reverse());
-      }
-
-      setIsLoading(false);
-    };
-
-    fetchData();
-  }, []);
-
-  // Subscribe to realtime updates
-  useEffect(() => {
-    const stateChannel = supabase
-      .channel("system-state-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "system_state" },
-        (payload) => {
-          setSystemState(payload.new as SystemState);
-        }
-      )
-      .subscribe();
-
-    const logsChannel = supabase
-      .channel("system-logs-realtime")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "system_logs" },
-        (payload) => {
-          setLogs((prev) => {
-            const newLogs = [...prev, payload.new as SystemLog];
-            // Keep only last 50
-            return newLogs.slice(-50);
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(stateChannel);
-      supabase.removeChannel(logsChannel);
-    };
+    // No backend configured for system control/telemetry.
+    setSystemState(null);
+    setLogs([]);
+    setIsLoading(false);
   }, []);
 
   // Auto-scroll terminal
@@ -100,14 +41,8 @@ export default function MissionControl() {
   const sendCommand = async (command: "START" | "STOP") => {
     setIsSendingCommand(true);
     try {
-      const { error } = await supabase
-        .from("system_commands")
-        .insert({ command, status: "PENDING" });
-
-      if (error) throw error;
-      toast.success(`${command} command sent`);
+      toast.error(`Cannot send ${command}: no backend configured`);
     } catch (err) {
-      toast.error(`Failed to send ${command} command`);
       console.error(err);
     } finally {
       setIsSendingCommand(false);
@@ -249,7 +184,7 @@ export default function MissionControl() {
       <div className="text-xs text-green-700 border-t border-green-900 pt-4">
         <span>AgentTrader v1.0</span>
         <span className="mx-2">|</span>
-        <span>Connected to Supabase Realtime</span>
+        <span>Backend not configured</span>
       </div>
     </div>
   );

@@ -1,23 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Database, CheckCircle, XCircle, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Database, XCircle } from "lucide-react";
 
 const StatusBanner = () => {
-  const [status, setStatus] = useState<"checking" | "connected" | "error">("checking");
-
-  useEffect(() => {
-    const checkConnection = async () => {
-      try {
-        const { error } = await supabase.from("paper_trades").select("id").limit(1);
-        setStatus(error ? "error" : "connected");
-      } catch {
-        setStatus("error");
-      }
-    };
-    checkConnection();
-  }, []);
+  const [status] = useState<"disabled">("disabled");
 
   return (
     <Card className="bg-card border-border">
@@ -27,23 +14,21 @@ const StatusBanner = () => {
             <Database className="h-6 w-6 text-primary" />
             <div>
               <h1 className="text-xl font-bold text-foreground">AgentTrader Hybrid Dashboard</h1>
-              <p className="text-sm text-muted-foreground">Data source: Supabase PostgreSQL</p>
+              <p className="text-sm text-muted-foreground">Data source: not configured</p>
             </div>
           </div>
           
           <Badge 
-            variant={status === "connected" ? "default" : status === "error" ? "destructive" : "secondary"}
+            variant="secondary"
             className="flex items-center gap-1.5"
           >
-            {status === "checking" && <Loader2 className="h-3 w-3 animate-spin" />}
-            {status === "connected" && <CheckCircle className="h-3 w-3" />}
-            {status === "error" && <XCircle className="h-3 w-3" />}
-            {status === "checking" ? "Checking..." : status === "connected" ? "Connected" : "Connection Error"}
+            <XCircle className="h-3 w-3" />
+            Disabled
           </Badge>
         </div>
         
         <p className="text-xs text-muted-foreground mt-2">
-          Backend ingestion loops and Alpaca paper auth are assumed running. Tables: market_data_1m, paper_trades, live_quotes
+          Backend ingestion is not configured in this build.
         </p>
       </CardContent>
     </Card>

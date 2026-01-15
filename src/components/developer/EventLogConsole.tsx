@@ -4,12 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Terminal, Copy, Trash2, Pause, Play, Filter, Download, Database, Clock, AlertCircle } from 'lucide-react';
-import { useEventLogs, usePersistenceStatus, clearLogs, LogLevel, LogSource, persistenceStore } from '@/lib/eventLogStore';
+import { Terminal, Copy, Trash2, Pause, Play, Filter, Download } from 'lucide-react';
+import { useEventLogs, clearLogs, LogLevel, LogSource } from '@/lib/eventLogStore';
 import { useToast } from '@/hooks/use-toast';
 
 const levelColors: Record<LogLevel, string> = {
@@ -20,7 +17,6 @@ const levelColors: Record<LogLevel, string> = {
 };
 
 const sourceColors: Record<LogSource, string> = {
-  supabase: 'text-emerald-600',
   alpaca: 'text-amber-600',
   exchange: 'text-blue-600',
   system: 'text-purple-600',
@@ -31,7 +27,6 @@ type TimeRange = '15m' | '1h' | '24h' | 'all';
 
 export const EventLogConsole = () => {
   const logs = useEventLogs();
-  const persistenceStatus = usePersistenceStatus();
   const { toast } = useToast();
   
   const [isPaused, setIsPaused] = useState(false);
@@ -39,8 +34,6 @@ export const EventLogConsole = () => {
   const [levelFilter, setLevelFilter] = useState<LogLevel | 'all'>('all');
   const [sourceFilter, setSourceFilter] = useState<LogSource | 'all'>('all');
   const [timeRange, setTimeRange] = useState<TimeRange>('all');
-  const [showTokenDialog, setShowTokenDialog] = useState(false);
-  const [tokenInput, setTokenInput] = useState('');
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pausedLogs, setPausedLogs] = useState(logs);
@@ -127,39 +120,8 @@ export const EventLogConsole = () => {
     });
   };
 
-  const handlePersistToggle = (checked: boolean) => {
-    if (checked) {
-      const storedToken = persistenceStore.getStoredToken();
-      if (storedToken) {
-        persistenceStore.togglePersistence(true, storedToken);
-      } else {
-        setShowTokenDialog(true);
-      }
-    } else {
-      persistenceStore.togglePersistence(false);
-    }
-  };
-
-  const handleTokenSubmit = () => {
-    if (tokenInput.trim()) {
-      persistenceStore.togglePersistence(true, tokenInput.trim());
-      setShowTokenDialog(false);
-      setTokenInput('');
-      toast({
-        title: 'Log persistence enabled',
-        description: 'Logs will be saved to Supabase every second'
-      });
-    }
-  };
-
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString() + '.' + date.getMilliseconds().toString().padStart(3, '0');
-  };
-
-  const formatFlushTime = () => {
-    if (!persistenceStatus.lastFlushTime) return null;
-    const seconds = Math.floor((Date.now() - persistenceStatus.lastFlushTime.getTime()) / 1000);
-    return `${seconds}s ago`;
   };
 
   return (
@@ -176,41 +138,6 @@ export const EventLogConsole = () => {
             </CardTitle>
             
             <div className="flex items-center gap-3">
-              {/* Persistence Toggle */}
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted/50">
-                <Database className="h-4 w-4 text-muted-foreground" />
-                <Label htmlFor="persist-toggle" className="text-xs font-medium cursor-pointer">
-                  Persist
-                </Label>
-                <Switch 
-                  id="persist-toggle"
-                  checked={persistenceStatus.enabled}
-                  onCheckedChange={handlePersistToggle}
-                />
-                {persistenceStatus.enabled && (
-                  <div className="flex items-center gap-1.5 text-xs">
-                    {persistenceStatus.lastError ? (
-                      <span className="text-destructive flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" />
-                        Error
-                      </span>
-                    ) : (
-                      <>
-                        <Clock className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-muted-foreground">
-                          {formatFlushTime() || 'Waiting...'}
-                        </span>
-                        {persistenceStatus.pendingCount > 0 && (
-                          <Badge variant="secondary" className="text-[10px] px-1 py-0">
-                            {persistenceStatus.pendingCount}
-                          </Badge>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-              
               <div className="flex items-center gap-2">
                 <Button 
                   variant={isPaused ? "default" : "outline"} 
@@ -259,7 +186,7 @@ export const EventLogConsole = () => {
             
             {/* Source Filter */}
             <div className="flex gap-1">
-              {(['all', 'supabase', 'alpaca', 'exchange', 'system', 'ui'] as const).map(source => (
+              {(['all', 'alpaca', 'exchange', 'system', 'ui'] as const).map(source => (
                 <Button
                   key={source}
                   variant={sourceFilter === source ? "default" : "outline"}
@@ -307,7 +234,7 @@ export const EventLogConsole = () => {
               {filteredLogs.length === 0 ? (
                 <div className="text-muted-foreground text-center py-8">
                   {displayLogs.length === 0 
-                    ? 'No events logged yet. Events from Supabase channels, Alpaca WebSocket, and exchanges will appear here.'
+                    ? 'No events logged yet. Events from data streams, broker connections, and UI actions will appear here.'
                     : 'No logs match the current filters'}
                 </div>
               ) : (
@@ -338,38 +265,6 @@ export const EventLogConsole = () => {
           </ScrollArea>
         </CardContent>
       </Card>
-
-      {/* OPS Token Dialog */}
-      <Dialog open={showTokenDialog} onOpenChange={setShowTokenDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Enable Log Persistence</DialogTitle>
-            <DialogDescription>
-              Enter your OPS Log Ingest Token to persist logs to Supabase. This token is stored in your browser's localStorage and used for all future sessions.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="ops-token">OPS Log Ingest Token</Label>
-            <Input
-              id="ops-token"
-              type="password"
-              placeholder="Enter your token..."
-              value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
-              className="mt-2"
-              onKeyDown={(e) => e.key === 'Enter' && handleTokenSubmit()}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowTokenDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleTokenSubmit} disabled={!tokenInput.trim()}>
-              Enable Persistence
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 };
