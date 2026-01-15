@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { client, type TradeApi } from "@/api/client";
 import { format } from "date-fns";
 import {
   Table,
@@ -26,23 +27,72 @@ interface Trade {
 export function RecentTradesTable() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+
+  const normalizeTrade = (raw: unknown): Trade | null => {
+    const r = raw as Record<string, unknown> | null | undefined;
+    if (!r) return null;
+
+    const id = r.id;
+    const createdAt = (r.created_at ?? r.createdAt ?? r.time ?? r.ts) as unknown;
+    const rootSymbol = (r.root_symbol ?? r.rootSymbol ?? r.symbol ?? r.ticker) as unknown;
+    const side = (r.side ?? r.strategy ?? r.action) as unknown;
+    const strike = r.strike as unknown;
+    const optionType = (r.option_type ?? r.optionType ?? r.type) as unknown;
+    const expiry = (r.expiry ?? r.expiration ?? r.exp) as unknown;
+    const price = (r.price ?? r.premium) as unknown;
+    const delta = r.delta as unknown;
+
+    if (id === undefined || id === null) return null;
+    if (typeof createdAt !== "string" || !createdAt) return null;
+    if (typeof rootSymbol !== "string" || !rootSymbol) return null;
+    if (typeof side !== "string" || !side) return null;
+
+    const strikeNum = typeof strike === "number" ? strike : Number(strike);
+    const priceNum = typeof price === "number" ? price : Number(price);
+
+    const optionTypeStr = typeof optionType === "string" && optionType ? optionType : "C";
+    const expiryStr = typeof expiry === "string" && expiry ? expiry : createdAt;
+
+    const deltaNum =
+      delta === null || delta === undefined
+        ? null
+        : typeof delta === "number"
+          ? delta
+          : Number(delta);
+
+    return {
+      id: String(id),
+      created_at: createdAt,
+      root_symbol: rootSymbol,
+      side,
+      strike: Number.isFinite(strikeNum) ? strikeNum : 0,
+      option_type: optionTypeStr,
+      expiry: expiryStr,
+      price: Number.isFinite(priceNum) ? priceNum : 0,
+      delta: deltaNum !== null && Number.isFinite(deltaNum) ? deltaNum : null,
+    };
+  };
 
   useEffect(() => {
     // Fetch initial trades
     const fetchTrades = async () => {
-      const { data, error } = await supabase
-        .from("trades")
-        .select("id, created_at, root_symbol, side, strike, option_type, expiry, price, delta")
-        .order("created_at", { ascending: false })
-        .limit(50);
+      try {
+        setLoading(true);
+        setError(null);
 
-      if (error) {
-        console.error("Error fetching trades:", error);
-      } else {
-        setTrades(data || []);
+        const data = await client.getTrades({ limit: 50 });
+        const normalized = (data as TradeApi[]).map(normalizeTrade).filter(Boolean) as Trade[];
+        setTrades(normalized);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to load trades";
+        console.error("Error fetching trades:", e);
+        setError(message);
+        setTrades([]);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchTrades();
@@ -58,7 +108,8 @@ export function RecentTradesTable() {
           table: "trades",
         },
         (payload) => {
-          const newTrade = payload.new as Trade;
+          const newTrade = normalizeTrade(payload.new);
+          if (!newTrade) return;
           setTrades((prev) => [newTrade, ...prev].slice(0, 50));
         }
       )
@@ -133,7 +184,13 @@ export function RecentTradesTable() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {trades.length === 0 ? (
+          {error ? (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center text-slate-500 py-8">
+                {error}
+              </TableCell>
+            </TableRow>
+          ) : trades.length === 0 ? (
             <TableRow>
               <TableCell colSpan={6} className="text-center text-slate-500 py-8">
                 No trades found
