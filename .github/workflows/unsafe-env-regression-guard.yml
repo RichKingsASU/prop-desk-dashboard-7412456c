@@ -1,0 +1,76 @@
+name: Unsafe env regression guard
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  unsafe-env-regression-guard:
+    name: Unsafe env regression guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fail on unsafe environment patterns
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          scan_fixed() {
+            local needle="$1"
+            shift
+            local path
+            for path in "$@"; do
+              if [ -d "$path" ]; then
+                if grep -RInF -- "$needle" "$path"; then
+                  echo "::error title=Unsafe env pattern detected::$needle found under $path. Do not access DATABASE_URL directly or import dotenv/python-dotenv."
+                  exit 1
+                fi
+              fi
+            done
+          }
+
+          scan_regex() {
+            local pattern="$1"
+            shift
+            local path
+            for path in "$@"; do
+              if [ -d "$path" ]; then
+                if grep -RInE -- "$pattern" "$path"; then
+                  echo "::error title=Unsafe env pattern detected::Regex '$pattern' matched under $path. Do not access DATABASE_URL directly or import dotenv/python-dotenv."
+                  exit 1
+                fi
+              fi
+            done
+          }
+
+          SCAN_PATHS=(.github/workflows scripts backend)
+
+          # 1) Direct DATABASE_URL access (Python)
+          scan_fixed 'os.getenv("DATABASE_URL")' "${SCAN_PATHS[@]}"
+          scan_fixed 'os.environ["DATABASE_URL"]' "${SCAN_PATHS[@]}"
+
+          # 2) dotenv / python-dotenv imports (Python + Node)
+          scan_fixed 'from dotenv' "${SCAN_PATHS[@]}"
+          scan_fixed 'import dotenv' "${SCAN_PATHS[@]}"
+          scan_fixed 'python-dotenv' "${SCAN_PATHS[@]}"
+          scan_fixed 'require("dotenv")' "${SCAN_PATHS[@]}"
+          scan_fixed "require('dotenv')" "${SCAN_PATHS[@]}"
+          scan_fixed 'dotenv.config(' "${SCAN_PATHS[@]}"
+
+          # 3) APCA_API_KEY_ID assignment outside backend/common/alpaca_env.py
+          if [ -d backend ]; then
+            # Catch typical Python assignment patterns.
+            matches="$(grep -RInE -- 'APCA_API_KEY_ID[[:space:]]*=' backend || true)"
+            if [ -n "$matches" ]; then
+              bad="$(printf '%s\n' "$matches" | grep -v '^backend/common/alpaca_env.py:' || true)"
+              if [ -n "$bad" ]; then
+                printf '%s\n' "$bad"
+                echo "::error title=Unsafe APCA_API_KEY_ID assignment::APCA_API_KEY_ID must only be assigned in backend/common/alpaca_env.py."
+                exit 1
+              fi
+            fi
+          fi
+
+          echo "Unsafe env regression guard: OK"
