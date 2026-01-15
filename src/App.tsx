@@ -2,11 +2,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LayoutProvider } from "./contexts/LayoutContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { MainLayout } from "./layouts/MainLayout";
+import { RequireAuth } from "@/components/RequireAuth";
 import Index from "./pages/Index";
 import F1Dashboard from "./pages/F1Dashboard";
 import Console from "./pages/Console";
@@ -36,29 +37,38 @@ const App = () => (
             <TooltipProvider>
               <Toaster />
               <Sonner />
-              <MainLayout>
-                <Routes>
-                  <Route path="/" element={<F1Dashboard />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/legacy" element={<Index />} />
-                  <Route path="/console/:symbol" element={<Console />} />
-                  <Route path="/options" element={<Options />} />
-                  <Route path="/options-dashboard" element={<OptionsDashboard />} />
-                  <Route path="/developer" element={<Developer />} />
-                  <Route path="/mission-control" element={<MissionControl />} />
-                  <Route path="/ops" element={<OpsLayout />}>
-                    <Route index element={<OpsOverview />} />
-                    <Route path="options" element={<OptionsExplorer />} />
-                    <Route path="news" element={<NewsViewer />} />
-                    <Route path="jobs" element={<JobHealth />} />
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
+
+                <Route element={<RequireAuth />}>
+                  <Route
+                    element={
+                      <MainLayout>
+                        <Outlet />
+                      </MainLayout>
+                    }
+                  >
+                    <Route path="/" element={<F1Dashboard />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/legacy" element={<Index />} />
+                    <Route path="/console/:symbol" element={<Console />} />
+                    <Route path="/options" element={<Options />} />
+                    <Route path="/options-dashboard" element={<OptionsDashboard />} />
+                    <Route path="/developer" element={<Developer />} />
+                    <Route path="/mission-control" element={<MissionControl />} />
+                    <Route path="/ops" element={<OpsLayout />}>
+                      <Route index element={<OpsOverview />} />
+                      <Route path="options" element={<OptionsExplorer />} />
+                      <Route path="news" element={<NewsViewer />} />
+                      <Route path="jobs" element={<JobHealth />} />
+                    </Route>
+                    <Route path="/test" element={<TestHub />} />
+                    <Route path="/test/supabase-dashboard" element={<SupabaseDashboard />} />
+                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                    <Route path="*" element={<NotFound />} />
                   </Route>
-                  <Route path="/test" element={<TestHub />} />
-                  <Route path="/test/supabase-dashboard" element={<SupabaseDashboard />} />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </MainLayout>
+                </Route>
+              </Routes>
             </TooltipProvider>
           </AuthProvider>
         </BrowserRouter>

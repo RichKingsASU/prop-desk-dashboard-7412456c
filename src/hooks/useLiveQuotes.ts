@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
 export type LiveQuote = {
   symbol: string;
@@ -18,59 +17,10 @@ export function useLiveQuotes() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadInitial() {
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from("live_quotes")
-          .select("*")
-          .order("symbol", { ascending: true });
-
-        if (error) throw error;
-        if (!isMounted) return;
-        setQuotes((data || []) as LiveQuote[]);
-      } catch (err: any) {
-        if (!isMounted) return;
-        setError(err.message ?? "Failed to load live quotes");
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    }
-
-    loadInitial();
-
-    // Subscribe to real-time updates
-    const channel = supabase
-      .channel("live_quotes_changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "live_quotes",
-        },
-        (payload) => {
-          const newRow = payload.new as LiveQuote;
-          setQuotes((prev) => {
-            // Upsert in local state by symbol
-            const idx = prev.findIndex((q) => q.symbol === newRow.symbol);
-            if (idx === -1) {
-              return [...prev, newRow].sort((a, b) => a.symbol.localeCompare(b.symbol));
-            }
-            const copy = [...prev];
-            copy[idx] = newRow;
-            return copy;
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      isMounted = false;
-      supabase.removeChannel(channel);
-    };
+    // Supabase-based market data is disabled; return an empty set.
+    setQuotes([]);
+    setError("Live quotes are unavailable (no data backend configured).");
+    setLoading(false);
   }, []);
 
   return { quotes, loading, error };

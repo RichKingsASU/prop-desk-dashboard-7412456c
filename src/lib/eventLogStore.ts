@@ -22,7 +22,6 @@ export interface PersistenceStatus {
 
 const MAX_LOGS = 500;
 const FLUSH_INTERVAL_MS = 1000;
-const SUPABASE_URL = 'https://nugswladoficdyvygstg.supabase.co';
 
 // In-memory store
 let logs: EventLog[] = [];
@@ -70,37 +69,13 @@ const flushLogs = async () => {
   notifyPersistenceListeners();
 
   try {
-    const payload = logsToFlush.map(log => ({
-      source: log.source,
-      level: log.level,
-      event_type: log.category,
-      message: log.message,
-      meta: log.meta || {}
-    }));
-
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/persist-dev-logs`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-OPS-TOKEN': opsToken
-      },
-      body: JSON.stringify({ logs: payload })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
-    }
-
-    lastFlushTime = new Date();
-    lastError = null;
-    notifyPersistenceListeners();
+    // Supabase edge-function persistence is disabled in this build.
+    throw new Error('Log persistence is disabled (no backend configured).');
   } catch (error) {
     lastError = error instanceof Error ? error.message : 'Unknown error';
     // Put logs back in queue on failure
     pendingLogs = [...logsToFlush, ...pendingLogs];
     notifyPersistenceListeners();
-    console.error('[eventLogStore] Failed to flush logs:', error);
   }
 };
 

@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { History, Filter, RefreshCw, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface DevEventLog {
   id: string;
@@ -74,50 +73,11 @@ export const LogHistoryTab = () => {
     setIsLoading(true);
     
     try {
-      let query = supabase
-        .from('dev_event_logs')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false });
-      
-      // Apply filters
-      const timeFilter = getTimeFilter();
-      if (timeFilter) {
-        query = query.gte('created_at', timeFilter);
-      }
-      
-      if (levelFilter !== 'all') {
-        query = query.eq('level', levelFilter);
-      }
-      
-      if (sourceFilter !== 'all') {
-        query = query.eq('source', sourceFilter);
-      }
-      
-      if (searchFilter) {
-        query = query.or(`message.ilike.%${searchFilter}%,event_type.ilike.%${searchFilter}%`);
-      }
-      
-      // Pagination
-      const offset = append ? logs.length : 0;
-      query = query.range(offset, offset + PAGE_SIZE - 1);
-      
-      const { data, error, count } = await query;
-      
-      if (error) {
-        console.error('Failed to fetch logs:', error);
-        return;
-      }
-      
-      const typedData = (data || []) as DevEventLog[];
-      
-      if (append) {
-        setLogs(prev => [...prev, ...typedData]);
-      } else {
-        setLogs(typedData);
-      }
-      
-      setTotalCount(count || 0);
-      setHasMore(typedData.length === PAGE_SIZE);
+      // Supabase log persistence is disabled in this build.
+      if (append) return;
+      setLogs([]);
+      setTotalCount(0);
+      setHasMore(false);
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {

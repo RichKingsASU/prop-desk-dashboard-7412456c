@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { updateProfile } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,21 +10,20 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Camera, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { ArrowLeft, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Settings() {
   const navigate = useNavigate();
-  const { user, profile, loading: authLoading } = useAuth();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user, loading: authLoading } = useAuth();
   
   const [displayName, setDisplayName] = useState("");
   const [tradingMode, setTradingMode] = useState("paper");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const tradingModeKey = user ? `tradingMode:${user.uid}` : null;
 
   // Redirect if not logged in
   useEffect(() => {
@@ -33,14 +32,15 @@ export default function Settings() {
     }
   }, [user, authLoading, navigate]);
 
-  // Load profile data
+  // Load user + local settings
   useEffect(() => {
-    if (profile) {
-      setDisplayName(profile.display_name || "");
-      setTradingMode(profile.trading_mode || "paper");
-      setAvatarUrl(profile.avatar_url);
+    if (!user) return;
+    setDisplayName(user.displayName || "");
+    if (tradingModeKey) {
+      const stored = localStorage.getItem(tradingModeKey);
+      if (stored === "paper" || stored === "live") setTradingMode(stored);
     }
-  }, [profile]);
+  }, [user, tradingModeKey]);
 
   const getInitials = (name: string | null, email: string | null): string => {
     if (name) {
@@ -52,56 +52,6 @@ export default function Settings() {
     return "??";
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-
-    // Validate file
-    if (!file.type.startsWith("image/")) {
-      setError("Please upload an image file");
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setError("Image must be less than 2MB");
-      return;
-    }
-
-    setUploading(true);
-    setError(null);
-
-    try {
-      const fileExt = file.name.split(".").pop();
-      const filePath = `${user.id}/avatar.${fileExt}`;
-
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(filePath);
-
-      // Update profile with new avatar URL
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ avatar_url: publicUrl })
-        .eq("id", user.id);
-
-      if (updateError) throw updateError;
-
-      setAvatarUrl(publicUrl);
-      toast.success("Avatar updated successfully");
-    } catch (err: any) {
-      setError(err.message || "Failed to upload avatar");
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const handleSave = async () => {
     if (!user) return;
 
@@ -110,15 +60,8 @@ export default function Settings() {
     setSuccess(false);
 
     try {
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({
-          display_name: displayName.trim() || null,
-          trading_mode: tradingMode,
-        })
-        .eq("id", user.id);
-
-      if (updateError) throw updateError;
+      await updateProfile(user, { displayName: displayName.trim() || null });
+      if (tradingModeKey) localStorage.setItem(tradingModeKey, tradingMode);
 
       setSuccess(true);
       toast.success("Settings saved successfully");
@@ -184,29 +127,11 @@ export default function Settings() {
               <div className="flex items-center gap-6">
                 <div className="relative">
                   <Avatar className="h-20 w-20">
-                    <AvatarImage src={avatarUrl || undefined} />
+                    <AvatarImage src={user.photoURL || undefined} />
                     <AvatarFallback className="bg-primary/10 text-primary text-xl font-semibold">
-                      {getInitials(displayName || profile?.display_name || null, user.email || null)}
+                      {getInitials(displayName || null, user.email || null)}
                     </AvatarFallback>
                   </Avatar>
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors disabled:opacity-50"
-                  >
-                    {uploading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Camera className="h-4 w-4" />
-                    )}
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    className="hidden"
-                  />
                 </div>
                 <div>
                   <p className="font-medium">{displayName || user.email?.split("@")[0]}</p>
