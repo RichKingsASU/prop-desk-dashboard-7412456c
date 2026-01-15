@@ -141,7 +141,7 @@ export default function OpsOverview() {
                       : 'No data'}
                   </p>
                   <p className="text-xs text-muted-foreground number-mono">
-                    {table.rowCountLast15Min} rows / 15m
+                    {table.rowCountLast15Min ?? '—'} rows / 15m
                   </p>
                 </div>
               </div>

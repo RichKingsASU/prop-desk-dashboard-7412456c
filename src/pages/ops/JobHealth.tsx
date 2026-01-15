@@ -116,7 +116,7 @@ export default function JobHealth() {
             <div>
               <p className="font-medium">Read-Only Monitoring</p>
               <p className="text-sm text-muted-foreground">
-                Job health is derived from data freshness in Supabase tables. No direct Cloud Run access required.
+                Job health is derived from backend-reported data timestamps. No direct database probing from the UI.
                 A job is considered healthy if its data source has received new rows within the last 5 minutes.
               </p>
             </div>
@@ -189,7 +189,7 @@ export default function JobHealth() {
                   {tableInfo && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Rows (15m)</span>
-                      <span className="number-mono">{tableInfo.rowCountLast15Min}</span>
+                      <span className="number-mono">{tableInfo.rowCountLast15Min ?? '—'}</span>
                     </div>
                   )}
                   <HealthBar score={getHealthScore(job.status)} />
